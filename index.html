@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.0.6';</script>
+<script>window.APP_VERSION='v5.0.7';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -167,6 +167,26 @@ a{color:var(--primary);text-decoration:none}
 }
 .today-item .item-action:hover{opacity:.85}
 .today-empty{text-align:center;padding:24px;color:var(--text-muted);font-size:14px}
+
+/* 待办自动同步任务 */
+.synced-box{margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--card-bg);padding:12px 14px}
+.synced-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px}
+.synced-header svg{width:16px;height:16px}
+#synced-tasks{display:flex;flex-direction:column;gap:8px}
+.synced-item{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--bg);transition:all .15s;
+}
+.synced-item:hover{box-shadow:var(--shadow-sm)}
+.synced-item .item-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--primary);color:#fff}
+.synced-item .item-content{flex:1;min-width:0}
+.synced-item .item-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.synced-item .item-meta{font-size:12px;color:var(--text-muted)}
+.synced-item .synced-go{
+  padding:4px 10px;border-radius:var(--radius-xs);font-size:12px;font-weight:500;
+  border:1px solid var(--primary);background:#fff;color:var(--primary);white-space:nowrap;cursor:pointer;transition:all .15s;
+}
+.synced-item .synced-go:hover{background:var(--primary);color:#fff}
 
 /* Activity */
 .activity-list{display:flex;flex-direction:column;gap:12px;max-height:320px;overflow-y:auto}
@@ -821,6 +841,13 @@ a{color:var(--primary);text-decoration:none}
             <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
             <input type="text" id="search-customers" placeholder="搜索客户名称、联系人、国家...">
           </div>
+          <select class="form-input" id="filter-customers" style="width:auto;flex:0 0 auto">
+            <option value="">全部状态</option>
+            <option value="未联系">未联系</option>
+            <option value="已联系">已联系</option>
+            <option value="跟进中">跟进中</option>
+            <option value="已成交">已成交</option>
+          </select>
           <button class="btn btn-primary btn-sm" data-action="add-customer"><svg class="icon-sm"><use href="#i-plus"/></svg> 新建客户</button>
           <button class="btn btn-outline btn-sm" data-sync="customers"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
         </div>
@@ -916,6 +943,13 @@ a{color:var(--primary);text-decoration:none}
             <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
             <input type="text" id="search-orders" placeholder="搜索订单号、客户、产品...">
           </div>
+          <select class="form-input" id="filter-orders" style="width:auto;flex:0 0 auto">
+            <option value="">全部状态</option>
+            <option value="待处理">待处理</option>
+            <option value="生产中">生产中</option>
+            <option value="已发货">已发货</option>
+            <option value="已完成">已完成</option>
+          </select>
           <button class="btn btn-primary btn-sm" data-action="add-order"><svg class="icon-sm"><use href="#i-plus"/></svg> 新建订单</button>
           <button class="btn btn-outline btn-sm" data-sync="orders"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
         </div>
@@ -957,6 +991,10 @@ a{color:var(--primary);text-decoration:none}
           <button class="btn btn-danger btn-sm" data-batch-delete="todos"><svg class="icon-sm"><use href="#i-trash"/></svg> 批量删除</button>
           <button class="btn btn-outline btn-sm" data-batch-cancel="todos">取消选择</button>
         </div>
+        <div class="synced-box" id="synced-tasks-wrap" style="display:none">
+          <div class="synced-header"><svg class="icon-sm" style="stroke:var(--primary)"><use href="#i-sync"/></svg> 自动同步任务（来自订单 / 样品寄样，状态变化自动更新）</div>
+          <div id="synced-tasks"></div>
+        </div>
         <div class="table-wrap">
           <table class="data-table" id="table-todos">
             <thead><tr>
@@ -980,6 +1018,15 @@ a{color:var(--primary);text-decoration:none}
             <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
             <input type="text" id="search-samples" placeholder="搜索姓名、电话、邮箱、国家...">
           </div>
+          <select class="form-input" id="filter-samples" style="width:auto;flex:0 0 auto">
+            <option value="">全部状态</option>
+            <option value="已反馈">已反馈</option>
+            <option value="未反馈">未反馈</option>
+            <option value="已寄出">已寄出</option>
+            <option value="未寄出">未寄出</option>
+            <option value="已签收">已签收</option>
+            <option value="未签收">未签收</option>
+          </select>
           <button class="btn btn-primary btn-sm" data-action="add-sample"><svg class="icon-sm"><use href="#i-plus"/></svg> 新建车手</button>
           <button class="btn btn-primary btn-sm" data-action="add-shipment"><svg class="icon-sm"><use href="#i-send"/></svg> 新增寄样</button>
           <button class="btn btn-outline btn-sm" data-sync="samples"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
@@ -1312,13 +1359,13 @@ var OUTREACH_DEFS={
 var PLATFORM_OPTIONS=['LinkedIn','Facebook','Instagram','Twitter/X','WhatsApp','YouTube','TikTok','其他'];
 
 var STATUS_OPTIONS={
-  customers:['待跟进','跟进中','已成交','已流失'],
+  customers:['未联系','已联系','跟进中','已成交'],
   orders:['待处理','生产中','已发货','已完成'],
   todos:['待办','进行中','已完成']
 };
 
 var STATUS_BADGE={
-  '待跟进':'badge-blue','跟进中':'badge-amber','已成交':'badge-green','已流失':'badge-red',
+  '待跟进':'badge-blue','未联系':'badge-blue','已联系':'badge-purple','跟进中':'badge-amber','已成交':'badge-green','已流失':'badge-red',
   '待处理':'badge-amber','生产中':'badge-blue','已发货':'badge-purple','已完成':'badge-green',
   '待办':'badge-amber','进行中':'badge-blue','已完成':'badge-green',
   '草稿':'badge-gray','已发送':'badge-blue','已确认':'badge-green','已拒绝':'badge-red'
@@ -1329,6 +1376,7 @@ var state={
   currentView:'dashboard',
   data:{customers:[],orders:[],todos:[],samples:[],shipments:[],products:[],quotes:[],letters:[],socials:[],devimages:[],follow_ups:[],payments:[]},
   search:{customers:'',orders:'',todos:'',samples:'',products:'',quotes:'',letters:'',socials:'',devimages:''},
+  filter:{customers:'',orders:'',samples:''},
   selected:{customers:[],orders:[],todos:[],samples:[],products:[]},
   currentCustomerId:null,
   currentCustomerTab:'logs',
@@ -1836,11 +1884,11 @@ function logActivity(action,module,description){
 /* ========== Sample Data ========== */
 function loadSampleData(){
   state.data.customers=[
-    {uid:uid(),company_name:'ABC Trading',contact_person:'John Smith',phone:'+1-310-555-0142',email:'john@abctrading.com',country:'美国',source:'推荐',status:'待跟进',notes:'由 Pacific Distributors 推荐',created_at:new Date(Date.now()-86400000*2).toISOString()},
+    {uid:uid(),company_name:'ABC Trading',contact_person:'John Smith',phone:'+1-310-555-0142',email:'john@abctrading.com',country:'美国',source:'推荐',status:'未联系',notes:'由 Pacific Distributors 推荐',created_at:new Date(Date.now()-86400000*2).toISOString()},
     {uid:uid(),company_name:'Pacific Distributors',contact_person:'Sarah Lee',phone:'+1-604-555-0198',email:'sarah@pacdist.com',country:'加拿大',source:'网站',status:'跟进中',notes:'对蓝牙音箱感兴趣',created_at:new Date(Date.now()-86400000*5).toISOString()},
     {uid:uid(),company_name:'Global Import',contact_person:'Mike Chen',phone:'+61-2-5550-1234',email:'mike@globalimport.com.au',country:'澳大利亚',source:'展会',status:'已成交',notes:'蓝牙音箱大单客户',created_at:new Date(Date.now()-86400000*10).toISOString()},
     {uid:uid(),company_name:'Sunrise Traders',contact_person:'Emma Wilson',phone:'+44-20-7946-0958',email:'emma@sunrise.co.uk',country:'英国',source:'社媒',status:'已成交',notes:'USB数据线常规客户',created_at:new Date(Date.now()-86400000*8).toISOString()},
-    {uid:uid(),company_name:'Oceanlink',contact_person:'David Park',phone:'+82-2-555-0123',email:'david@oceanlink.kr',country:'韩国',source:'展会',status:'待跟进',notes:'LED灯具询盘',created_at:new Date(Date.now()-86400000*3).toISOString()}
+    {uid:uid(),company_name:'Oceanlink',contact_person:'David Park',phone:'+82-2-555-0123',email:'david@oceanlink.kr',country:'韩国',source:'展会',status:'未联系',notes:'LED灯具询盘',created_at:new Date(Date.now()-86400000*3).toISOString()}
   ];
   state.data.orders=[
     {uid:uid(),order_no:'PO-2026-0715',customer_name:'Sunrise Traders',product:'USB 数据线 x5000',amount:3500,currency:'USD',status:'已发货',order_date:daysFromNow(-15),notes:'已发货，预计8月20日到达',created_at:new Date(Date.now()-86400000*15).toISOString()},
@@ -1945,7 +1993,7 @@ function renderDashboard(){
     d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 星期'+weekdays[d.getDay()]+' · 稳扎稳打，稳步推进各项业务进度';
 
   // Stats
-  var pendingCustomers=state.data.customers.filter(function(c){return c.status==='待跟进';}).length;
+  var pendingCustomers=state.data.customers.filter(function(c){return c.status==='未联系';}).length;
   var pendingOrders=state.data.orders.filter(function(o){return o.status==='待处理';}).length;
   var weekAgo=Date.now()-7*86400000;
   var newCustomers=state.data.customers.filter(function(c){
@@ -1954,7 +2002,7 @@ function renderDashboard(){
   var pendingTodos=state.data.todos.filter(function(t){return t.status!=='已完成';}).length;
 
   var stats=[
-    {icon:'i-users',cls:'blue',value:pendingCustomers,label:'待跟进客户'},
+    {icon:'i-users',cls:'blue',value:pendingCustomers,label:'未联系客户'},
     {icon:'i-cart',cls:'amber',value:pendingOrders,label:'待处理订单'},
     {icon:'i-trending',cls:'green',value:newCustomers,label:'本周新增客户'},
     {icon:'i-check',cls:'purple',value:pendingTodos,label:'待办任务'}
@@ -1986,11 +2034,25 @@ function renderDashboard(){
       todayItems.push({type:'pending',icon:'i-cart',title:o.order_no+' · '+o.product,meta:'待处理订单 · '+formatMoney(o.amount,o.currency),goto:'orders',uid:o.uid});
     }
   });
+  // 生产中的订单（同样需要跟进）
+  state.data.orders.forEach(function(o){
+    if(o.status==='生产中'){
+      todayItems.push({type:'pending',icon:'i-cart',title:o.order_no+' · '+o.product,meta:'生产中订单 · '+formatMoney(o.amount,o.currency),goto:'orders',uid:o.uid});
+    }
+  });
+  // 样品：未反馈 / 未发货（自动同步自寄样记录）
+  (state.data.shipments||[]).forEach(function(sh){
+    if(sh.feedback_status==='未反馈'||sh.ship_status==='未寄出'){
+      var s=getSampleById(sh.sample_id);
+      var why=[];if(sh.feedback_status==='未反馈')why.push('未反馈');if(sh.ship_status==='未寄出')why.push('未发货');
+      todayItems.push({type:'pending',icon:'i-package',title:(s?s.name:'样品'),meta:'样品'+why.join('·')+' · '+(shipmentProductLabel(sh)||''),goto:'samples',uid:sh.sample_id});
+    }
+  });
   // Customers to follow up (max 3)
   var followUpCount=0;
   state.data.customers.forEach(function(c){
-    if(c.status==='待跟进'&&followUpCount<3){
-      todayItems.push({type:'pending',icon:'i-users',title:c.company_name,meta:'待跟进 · '+(c.country||''),goto:'customers',uid:c.uid});
+    if(c.status==='未联系'&&followUpCount<3){
+      todayItems.push({type:'pending',icon:'i-users',title:c.company_name,meta:'未联系 · '+(c.country||''),goto:'customers',uid:c.uid});
       followUpCount++;
     }
   });
@@ -2046,7 +2108,7 @@ function renderDashboard(){
 
 function updateBadges(){
   var counts={
-    customers:state.data.customers.filter(function(c){return c.status==='待跟进';}).length,
+    customers:state.data.customers.filter(function(c){return c.status==='未联系';}).length,
     orders:state.data.orders.filter(function(o){return o.status==='待处理';}).length,
     todos:state.data.todos.filter(function(t){return t.status!=='已完成';}).length,
     samples:0
@@ -2089,11 +2151,25 @@ function renderTable(tableName){
     });
   }
 
+  // 状态筛选（订单 / 客户）
+  if(tableName==='customers'&&state.filter.customers){
+    data=data.filter(function(r){return r.status===state.filter.customers;});
+  }
+  if(tableName==='orders'&&state.filter.orders){
+    data=data.filter(function(r){return r.status===state.filter.orders;});
+  }
+
   if(data.length===0){
     tbody.innerHTML='';
-    empty.style.display='block';
     document.querySelector('#table-'+tableName).style.display='none';
     updateBatchBar(tableName);
+    if(tableName==='todos'){
+      renderSyncedTasks();
+      var hasSynced=hasSyncedTasks();
+      empty.style.display=hasSynced?'none':'block';
+    }else{
+      empty.style.display='block';
+    }
     return;
   }
   empty.style.display='none';
@@ -2152,12 +2228,66 @@ function renderTable(tableName){
         '</td>'+
       '</tr>';
     }).join('');
+    renderSyncedTasks();
   }else if(tableName==='samples'||tableName==='shipments'){
     // samples 走卡片视图；shipments（hidden）变化时也要刷新卡片上的寄样统计
     renderSampleCards();
     return;
   }
   updateBatchBar(tableName);
+}
+
+/* ========== 待办自动同步（来自订单 / 样品寄样） ========== */
+/* 实时派生「同步任务」：订单(待处理/生产中) + 寄样(未反馈/未发货)。
+   不写入 localStorage，刷新即重算，状态变化自动进出，避免重复/失效待办。 */
+function hasSyncedTasks(){
+  var orders=(state.data.orders||[]).some(function(o){return o.status==='待处理'||o.status==='生产中';});
+  var ships=(state.data.shipments||[]).some(function(sh){return sh.feedback_status==='未反馈'||sh.ship_status==='未寄出';});
+  return orders||ships;
+}
+function getSyncedTasks(){
+  var tasks=[];
+  (state.data.orders||[]).forEach(function(o){
+    if(o.status==='待处理'||o.status==='生产中'){
+      tasks.push({key:'order:'+o.uid,src:'orders',uid:o.uid,icon:'i-cart',
+        title:(o.order_no||'')+' · '+(o.product||''),
+        meta:(o.status==='待处理'?'待处理订单':'生产中订单')+' · '+formatMoney(o.amount,o.currency),
+        badge:o.status});
+    }
+  });
+  (state.data.shipments||[]).forEach(function(sh){
+    var why=[];
+    if(sh.feedback_status==='未反馈')why.push('未反馈');
+    if(sh.ship_status==='未寄出')why.push('未发货');
+    if(!why.length)return;
+    var s=getSampleById(sh.sample_id);
+    tasks.push({key:'ship:'+sh.uid,src:'sample',uid:sh.sample_id,icon:'i-package',
+      title:(s?s.name:'样品')+' 的寄样',
+      meta:'寄样（'+(shipmentProductLabel(sh)||'')+'）'+why.join(' · '),
+      badge:why.join('/')});
+  });
+  return tasks;
+}
+function renderSyncedTasks(){
+  var wrap=document.getElementById('synced-tasks-wrap');
+  var box=document.getElementById('synced-tasks');
+  if(!wrap||!box)return;
+  var tasks=getSyncedTasks();
+  if(!tasks.length){
+    wrap.style.display='none';
+    box.innerHTML='';
+    return;
+  }
+  wrap.style.display='block';
+  box.innerHTML=tasks.map(function(t){
+    var badgeCls=STATUS_BADGE[t.badge]||'badge-amber';
+    return '<div class="synced-item">'+
+      '<div class="item-icon"><svg class="icon-sm" style="stroke:#fff"><use href="#'+t.icon+'"/></svg></div>'+
+      '<div class="item-content"><div class="item-title">'+escapeHtml(t.title)+'</div><div class="item-meta">'+escapeHtml(t.meta)+'</div></div>'+
+      '<span class="badge '+badgeCls+'">'+escapeHtml(t.badge)+'</span>'+
+      '<button class="synced-go" data-sync-go="'+t.src+'" data-uid="'+t.uid+'">去处理</button>'+
+    '</div>';
+  }).join('');
 }
 
 /* ========== UI: Products Module ========== */
@@ -2296,6 +2426,23 @@ function renderSampleCards(){
   if(kw){
     data=data.filter(function(s){
       return [s.name,s.type,s.phone,s.email,s.country,s.address].some(function(v){return v&&String(v).toLowerCase().indexOf(kw)>-1;});
+    });
+  }
+  // 状态筛选：依据该样品的寄样记录派生（已寄出/已签收/已反馈 取"任一寄样满足"，未X 取"全部未X"）
+  var sf=state.filter.samples;
+  if(sf){
+    data=data.filter(function(s){
+      var ships=getSampleShipments(s.uid);
+      var hasShipped=ships.some(function(x){return x.ship_status==='已寄出';});
+      var hasReceived=ships.some(function(x){return x.receipt_status==='已签收';});
+      var hasFeedback=ships.some(function(x){return x.feedback_status==='已反馈';});
+      if(sf==='已寄出')return hasShipped;
+      if(sf==='未寄出')return !hasShipped;
+      if(sf==='已签收')return hasReceived;
+      if(sf==='未签收')return !hasReceived;
+      if(sf==='已反馈')return hasFeedback;
+      if(sf==='未反馈')return !hasFeedback;
+      return true;
     });
   }
   data.sort(function(a,b){return String(b.created_at||'')<String(a.created_at||'')?-1:String(b.created_at||'')>String(a.created_at||'')?1:0;});
@@ -2728,7 +2875,6 @@ function addShipment(rec){
   state.data.shipments.unshift(rec);
   saveData(KEYS.shipments,state.data.shipments);
   logActivity('add','寄样记录','新增寄样：'+getRecordTitle('shipments',rec));
-  autoCreateFollowupTodo(rec);
   if(tableSyncReady('shipments')){
     sbMergeTable('shipments').catch(function(e){toast('寄样同步失败：'+e.message,'error');});
   }
@@ -4769,6 +4915,17 @@ function setupEvents(){
       else if(action==='sync')openSettingsModal();
     }
 
+    // 同步任务「去处理」按钮
+    var syncGo=e.target.closest('[data-sync-go]');
+    if(syncGo){
+      if(syncGo.dataset.syncGo==='orders'){
+        switchView('orders');
+      }else if(syncGo.dataset.uid){
+        openSampleDetail(syncGo.dataset.uid);
+      }
+      return;
+    }
+
     // Customer name link -> detail
     var custLink=e.target.closest('[data-view-customer]');
     if(custLink){
@@ -5061,6 +5218,18 @@ function setupEvents(){
     }
   });
 
+  // 状态筛选（客户 / 订单 / 样品）
+  ['customers','orders','samples'].forEach(function(t){
+    var el=document.getElementById('filter-'+t);
+    if(el){
+      el.addEventListener('change',function(){
+        state.filter[t]=el.value;
+        if(t==='samples')renderSampleCards();
+        else renderTable(t);
+      });
+    }
+  });
+
   // Products category filter
   var catFilter=document.getElementById('filter-products-category');
   if(catFilter){
@@ -5278,6 +5447,14 @@ function migrateLegacyData(username){
   var a=loadData(PREFIX+'activity_log');
   if(a&&Array.isArray(a)&&a.length&&!loadData(KEYS.activity)){saveData(KEYS.activity,a);state.activities=a;}
   saveData(PREFIX+'migrated',true);
+}
+/* 客户状态归一化：历史「待跟进」映射为「未联系」 */
+function migrateCustomerStatus(){
+  var changed=false;
+  (state.data.customers||[]).forEach(function(c){
+    if(c.status==='待跟进'){c.status='未联系';changed=true;}
+  });
+  if(changed){saveData(KEYS.customers,state.data.customers);}
 }
 /* 本地模式无需迁移中央数据（所有数据已在同一个 MySQL 库） */
 async function migrateCentralData(username){
@@ -5501,6 +5678,9 @@ async function enterApp(username){
     var d=loadData(KEYS[k]);
     if(d&&Array.isArray(d)){state.data[k]=d;}
   });
+
+  // 客户状态归一化：旧「待跟进」→「未联系」（兼容历史数据，幂等）
+  migrateCustomerStatus();
 
   // 旧格式样品数据本地兜底迁移（档案+寄样记录结构，幂等）
   migrateLegacySamples();
