@@ -721,6 +721,25 @@ a{color:var(--primary);text-decoration:none}
         <span class="header-title" id="header-title">概览</span>
       </div>
       <div class="header-actions">
+        <div id="timezone-box" style="display:flex;align-items:center;gap:4px;margin-right:8px">
+          <select id="tz-select" style="font-size:12px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text);cursor:pointer">
+            <option value="Asia/Shanghai">中国</option>
+            <option value="America/New_York">美东</option>
+            <option value="America/Los_Angeles">美西</option>
+            <option value="Europe/London">英国</option>
+            <option value="Europe/Berlin">德国</option>
+            <option value="Europe/Moscow">俄罗斯</option>
+            <option value="Asia/Tokyo">日本</option>
+            <option value="Asia/Seoul">韩国</option>
+            <option value="Asia/Singapore">新加坡</option>
+            <option value="Asia/Dubai">迪拜</option>
+            <option value="Asia/Bangkok">泰国</option>
+            <option value="Asia/Kolkata">印度</option>
+            <option value="Australia/Sydney">悉尼</option>
+            <option value="Brazil/East">巴西</option>
+          </select>
+          <span id="tz-display" style="font-size:12px;color:var(--text-muted);white-space:nowrap"></span>
+        </div>
         <button class="header-btn" id="btn-export" title="导出数据表格"><svg class="icon-sm"><use href="#i-download"/></svg><span>导出</span></button>
         <button class="header-btn" id="btn-import" title="导入恢复"><svg class="icon-sm"><use href="#i-upload"/></svg><span>导入</span></button>
         <button class="header-btn" id="btn-settings" title="数据库设置"><svg class="icon-sm"><use href="#i-settings"/></svg><span>设置</span></button>
@@ -1169,6 +1188,10 @@ a{color:var(--primary);text-decoration:none}
       <div class="form-group">
         <label class="form-label">确认密码</label>
         <input class="form-input" id="reg-pass2" type="password" placeholder="再次输入密码" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">内部邀请码</label>
+        <input class="form-input" id="reg-invite" placeholder="请输入内部邀请码">
       </div>
       <button class="btn btn-primary btn-block" id="btn-register">注册并进入工作台</button>
     </div>
@@ -5017,6 +5040,49 @@ function setupEvents(){
     });
   }
 
+  // Timezone clock
+  var TZ_LABELS={
+    'Asia/Shanghai':'中国','America/New_York':'美东','America/Los_Angeles':'美西',
+    'Europe/London':'英国','Europe/Berlin':'德国','Europe/Moscow':'俄罗斯',
+    'Asia/Tokyo':'日本','Asia/Seoul':'韩国','Asia/Singapore':'新加坡',
+    'Asia/Dubai':'迪拜','Asia/Bangkok':'泰国','Asia/Kolkata':'印度',
+    'Australia/Sydney':'悉尼','Brazil/East':'巴西'
+  };
+  var savedTZ=localStorage.getItem('tz_selected')||'Asia/Shanghai';
+  var tzSelect=document.getElementById('tz-select');
+  var tzDisplay=document.getElementById('tz-display');
+  if(tzSelect){
+    tzSelect.value=savedTZ;
+    var tzTimer=null;
+    function updateTZClock(){
+      var tz=tzSelect.value;
+      var label=TZ_LABELS[tz]||tz;
+      try{
+        var now=new Date();
+        var parts=new Intl.DateTimeFormat('zh-CN',{
+          timeZone:tz,hour:'2-digit',minute:'2-digit',second:'2-digit',
+          hour12:false,weekday:'short'
+        }).formatToParts(now);
+        var hm='',wd='';
+        parts.forEach(function(p){
+          if(p.type==='hour'||p.type==='minute'||p.type==='second'){
+            if(p.type==='hour')hm=p.value;else if(p.type==='minute')hm+=':'+p.value;else hm+=':'+p.value;
+          }
+          if(p.type==='weekday')wd=p.value;
+        });
+        tzDisplay.textContent=label+' '+hm+' '+wd;
+      }catch(e){
+        tzDisplay.textContent=label+' '+new Date().toLocaleTimeString('zh-CN');
+      }
+    }
+    tzSelect.addEventListener('change',function(){
+      localStorage.setItem('tz_selected',tzSelect.value);
+      updateTZClock();
+    });
+    updateTZClock();
+    tzTimer=setInterval(updateTZClock,1000);
+  }
+
   // Header buttons
   document.getElementById('btn-export').addEventListener('click',openExportModal);
   document.getElementById('btn-import').addEventListener('click',function(){
@@ -5265,10 +5331,12 @@ async function handleRegister(){
   var u=document.getElementById('reg-user').value.trim();
   var p=document.getElementById('reg-pass').value;
   var p2=document.getElementById('reg-pass2').value;
+  var invite=document.getElementById('reg-invite').value.trim();
   if(!u||!p){toast('请填写账号和密码','warning');return;}
   if(!/^[A-Za-z0-9_\u4e00-\u9fa5]{2,20}$/.test(u)){toast('账号需为2-20位字母/数字/下划线/中文','warning');return;}
   if(p.length<4){toast('密码至少4位','warning');return;}
   if(p!==p2){toast('两次密码不一致','warning');return;}
+  if(invite!=='DYSFTRAND888'){toast('内部邀请码不正确，请联系管理员获取','error');return;}
   if(!usersReady()){toast('数据库未连接，请联系管理员','error');return;}
   var btn=document.getElementById('btn-register');
   if(btn){btn.disabled=true;btn.textContent='注册中...';}
