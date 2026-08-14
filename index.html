@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.0.4';</script>
+<script>window.APP_VERSION='v5.0.6';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1609,11 +1609,18 @@ async function sbMergeTable(tableName){
     local.forEach(function(r){if(r.uid)localMap[r.uid]=r;});
     remote.forEach(function(r){if(r.uid)remoteMap[r.uid]=r;});
 
-    // 0) 看门狗：云端出现本机曾删除过的记录 -> 立即从云端删除（防任何途径的复活）
+    // 0) 看门狗：云端出现本机曾删除过的记录 -> 检查是否为重新创建
+    //    如果记录的 updated_at 比删除时间新，说明是重新创建的（如通过SQL手动插入），不删除
     var toDelete=[];
     remote.forEach(function(r){
       if(deleted[r.uid]&&!localMap[r.uid]){
-        toDelete.push(r.uid);
+        var remoteUpdated=new Date(r.updated_at||'').getTime()||0;
+        if(remoteUpdated>deleted[r.uid]){
+          // 记录被重新创建，清除删除标记
+          delete deleted[r.uid];
+        }else{
+          toDelete.push(r.uid);
+        }
       }
     });
     if(toDelete.length){
@@ -4192,7 +4199,11 @@ function openSettingsModal(){
           '<div class="form-group" style="flex:1">'+
             '<button class="btn btn-primary btn-sm" id="sb-sync-all" style="width:100%"><svg class="icon-sm"><use href="#i-sync"/></svg> 全量同步</button>'+
           '</div>'+
+          '<div class="form-group" style="flex:1">'+
+            '<button class="btn btn-outline btn-sm" id="sb-force-pull" style="width:100%"><svg class="icon-sm"><use href="#i-download"/></svg> 强制拉取</button>'+
+          '</div>'+
         '</div>'+
+        '<div class="form-hint" style="margin-top:-8px;margin-bottom:8px">「强制拉取」会清除本地删除标记并从服务器重新拉取全部数据，适用于通过 phpMyAdmin 手动插入数据后同步到工作台。</div>'+
         '<div class="form-divider" style="height:1px;background:var(--border);margin:16px 0"></div>'+
         '<div class="form-label" style="margin-bottom:8px">修改登录密码</div>'+
         '<div class="sync-config-row">'+
@@ -4243,6 +4254,25 @@ function openSettingsModal(){
       toast('同步失败：'+e.message,'error');
     }
     btn.disabled=false;btn.innerHTML='<svg class="icon-sm"><use href="#i-sync"/></svg> 全量同步';
+  };
+  document.getElementById('sb-force-pull').onclick=async function(){
+    var btn=this;btn.disabled=true;btn.textContent='拉取中...';
+    try{
+      // 清除本地删除标记，防止看门狗删除服务器数据
+      localDeletedUids={};
+      saveLocalDeletedUids();
+      // 全量同步（拉取+合并+推送）
+      var sbTables=['customers','orders','todos','samples','shipments','quotes'].concat(Object.keys(OUTREACH_DEFS).filter(function(k){return OUTREACH_DEFS[k].sbTable;}));
+      for(var i=0;i<sbTables.length;i++){
+        await sbSyncTable(sbTables[i]);
+      }
+      toast('强制拉取完成！服务器数据已同步到工作台','success');
+      updateSyncStatus();
+      document.getElementById('modal-settings').remove();
+    }catch(e){
+      toast('拉取失败：'+e.message,'error');
+    }
+    btn.disabled=false;btn.innerHTML='<svg class="icon-sm"><use href="#i-download"/></svg> 强制拉取';
   };
   document.getElementById('pwd-save').onclick=async function(){
     var oldPwd=document.getElementById('pwd-old').value;
