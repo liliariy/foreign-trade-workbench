@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.0.7';</script>
+<script>window.APP_VERSION='v5.0.8';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -916,6 +916,13 @@ a{color:var(--primary);text-decoration:none}
             <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
             <input type="text" id="search-orders" placeholder="搜索订单号、客户、产品...">
           </div>
+          <select class="form-input" id="filter-orders-status" style="width:auto;flex:0 0 auto">
+            <option value="">全部状态</option>
+            <option value="待处理">待处理（未付款）</option>
+            <option value="生产中">生产中</option>
+            <option value="已发货">已发货</option>
+            <option value="已完成">已完成</option>
+          </select>
           <button class="btn btn-primary btn-sm" data-action="add-order"><svg class="icon-sm"><use href="#i-plus"/></svg> 新建订单</button>
           <button class="btn btn-outline btn-sm" data-sync="orders"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
         </div>
@@ -980,6 +987,13 @@ a{color:var(--primary);text-decoration:none}
             <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
             <input type="text" id="search-samples" placeholder="搜索姓名、电话、邮箱、国家...">
           </div>
+          <select class="form-input" id="filter-samples-ship" style="width:auto;flex:0 0 auto">
+            <option value="">全部寄样</option>
+            <option value="未反馈">未反馈</option>
+            <option value="已反馈">已反馈</option>
+            <option value="未发货">未发货</option>
+          </select>
+          <button class="btn btn-outline btn-sm" data-action="backfill-todos"><svg class="icon-sm"><use href="#i-alert"/></svg> 生成未跟进待办</button>
           <button class="btn btn-primary btn-sm" data-action="add-sample"><svg class="icon-sm"><use href="#i-plus"/></svg> 新建车手</button>
           <button class="btn btn-primary btn-sm" data-action="add-shipment"><svg class="icon-sm"><use href="#i-send"/></svg> 新增寄样</button>
           <button class="btn btn-outline btn-sm" data-sync="samples"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
@@ -1329,6 +1343,7 @@ var state={
   currentView:'dashboard',
   data:{customers:[],orders:[],todos:[],samples:[],shipments:[],products:[],quotes:[],letters:[],socials:[],devimages:[],follow_ups:[],payments:[]},
   search:{customers:'',orders:'',todos:'',samples:'',products:'',quotes:'',letters:'',socials:'',devimages:''},
+  filter:{orders:'',samples:''},
   selected:{customers:[],orders:[],todos:[],samples:[],products:[]},
   currentCustomerId:null,
   currentCustomerTab:'logs',
@@ -2075,6 +2090,10 @@ function renderTable(tableName){
     });
   }
 
+  if(tableName==='orders'&&state.filter.orders){
+    data=data.filter(function(r){return (r.status||'')===state.filter.orders;});
+  }
+
   if(data.length===0){
     tbody.innerHTML='';
     empty.style.display='block';
@@ -2269,6 +2288,14 @@ function getSampleShipments(sampleId){
   });
   return list;
 }
+/* 寄样筛选匹配：未反馈 / 已反馈 / 未发货 */
+function shipmentMatchesFilter(sh,f){
+  if(!f)return true;
+  if(f==='未反馈')return (sh.feedback_status||'未反馈')==='未反馈';
+  if(f==='已反馈')return (sh.feedback_status||'未反馈')==='已反馈';
+  if(f==='未发货')return (sh.ship_status||'未寄出')!=='已寄出';
+  return true;
+}
 function getSampleById(uid){
   return (state.data.samples||[]).find(function(s){return s.uid===uid;})||null;
 }
@@ -2284,6 +2311,12 @@ function renderSampleCards(){
       return [s.name,s.type,s.phone,s.email,s.country,s.address].some(function(v){return v&&String(v).toLowerCase().indexOf(kw)>-1;});
     });
   }
+  var shipF=state.filter.samples;
+  if(shipF){
+    data=data.filter(function(s){
+      return getSampleShipments(s.uid).some(function(sh){return shipmentMatchesFilter(sh,shipF);});
+    });
+  }
   data.sort(function(a,b){return String(b.created_at||'')<String(a.created_at||'')?-1:String(b.created_at||'')>String(a.created_at||'')?1:0;});
   if(!data.length){
     grid.innerHTML='';
@@ -2295,6 +2328,8 @@ function renderSampleCards(){
     var ships=getSampleShipments(s.uid);
     var count=ships.length;
     var totalQty=ships.reduce(function(sum,sh){return sum+shipmentTotalQty(sh);},0);
+    var fbPending=ships.filter(function(sh){return (sh.feedback_status||'未反馈')!=='已反馈';}).length;
+    var shipPending=ships.filter(function(sh){return (sh.ship_status||'未寄出')!=='已寄出';}).length;
     var lastDate=ships.length?ships[0].ship_date||'-':'-';
     var coop=s.cooperation_status||'合作中';
     var coopCls=coop==='合作中'?'badge-green':(coop==='暂停合作'?'badge-amber':'badge-gray');
@@ -2303,7 +2338,7 @@ function renderSampleCards(){
     return '<div class="sample-card" data-sample-open="'+s.uid+'">'+
       '<div class="sample-card-top">'+
         '<div class="sample-card-name"><span class="avatar">'+escapeHtml(initial)+'</span>'+escapeHtml(s.name||'未命名')+'</div>'+
-        '<div style="display:flex;gap:6px"><span class="type-tag '+typeCls+'">'+escapeHtml(s.type||'-')+'</span><span class="badge '+coopCls+'">'+escapeHtml(coop)+'</span></div>'+
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="type-tag '+typeCls+'">'+escapeHtml(s.type||'-')+'</span><span class="badge '+coopCls+'">'+escapeHtml(coop)+'</span>'+(fbPending?'<span class="badge badge-amber">待反馈 '+fbPending+'</span>':'')+(shipPending?'<span class="badge badge-gray">待发货 '+shipPending+'</span>':'')+'</div>'+
       '</div>'+
       '<div class="sample-card-meta">'+
         '<span>'+escapeHtml(s.country||'-')+'</span><span class="sep">·</span><span>'+escapeHtml(s.phone||'-')+'</span>'+
@@ -2400,6 +2435,8 @@ function renderSampleShipmentsHtml(){
   var s=getSampleById(state.currentSampleId);
   if(!s)return '';
   var ships=getSampleShipments(s.uid);
+  var shipF=state.filter.samples;
+  if(shipF)ships=ships.filter(function(sh){return shipmentMatchesFilter(sh,shipF);});
   if(!ships.length){
     return '<div class="cd-empty"><svg><use href="#i-send"/></svg><p>暂无寄样记录</p><button class="btn btn-primary btn-sm" data-sample-action="ship">新增第一条寄样记录</button></div>';
   }
@@ -2731,32 +2768,57 @@ function updateShipment(uid,rec){
   }
   saveData(KEYS.shipments,state.data.shipments);
   logActivity('update','寄样记录','更新寄样记录');
+  autoCreateFollowupTodo(rec);
   if(tableSyncReady('shipments')){
     sbMergeTable('shipments').catch(function(e){toast('寄样同步失败：'+e.message,'error');});
   }
   toast('寄样记录已更新','success');
 }
-/* 反馈未反馈 → 自动创建待办（同车手+寄样记录只建一条） */
-function autoCreateFollowupTodo(ship){
-  if(ship.feedback_status==='已反馈')return;
+/* 寄样未反馈/未发货 → 自动创建跟进待办（同车手+寄样记录每种只建一条，已存在则跳过） */
+function autoCreateFollowupTodo(ship,silent){
   var sample=getSampleById(ship.sample_id);
-  var title='跟进车手 '+((sample&&sample.name)||'')+' 的样品反馈';
-  var due=ship.ship_date||todayStr();
-  var d=new Date(due+'T00:00:00');d.setDate(d.getDate()+7);
-  var p=function(n){return n<10?'0'+n:n;};
-  var dueStr=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
-  var exists=(state.data.todos||[]).some(function(t){
-    return t.title===title&&t.notes&&t.notes.indexOf(ship.uid)>-1;
-  });
-  if(exists)return;
-  var todo={uid:uid(),title:title,related_customer:(sample&&sample.name)||'',priority:'P1',due_date:dueStr,status:'待办',notes:'寄样记录：'+ship.uid+'（'+((sample&&sample.name)||'')+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()};
-  state.data.todos.unshift(todo);
-  saveData(KEYS.todos,state.data.todos);
-  logActivity('add','待办任务','自动创建跟进待办：'+title);
-  if(tableSyncReady('todos')&&state.sbConfig.autoSync){
-    sbMergeTable('todos').catch(function(e){});
+  var sampleName=(sample&&sample.name)||'';
+  // 1) 反馈未反馈 → 跟进反馈待办
+  if((ship.feedback_status||'未反馈')!=='已反馈'){
+    var fbTitle='跟进车手 '+sampleName+' 的样品反馈';
+    var fbDue=ship.ship_date||todayStr();
+    var d1=new Date(fbDue+'T00:00:00');d1.setDate(d1.getDate()+7);
+    var p1=function(n){return n<10?'0'+n:n;};
+    var fbDueStr=d1.getFullYear()+'-'+p1(d1.getMonth()+1)+'-'+p1(d1.getDate());
+    var fbExists=(state.data.todos||[]).some(function(t){return t.title===fbTitle&&t.notes&&t.notes.indexOf(ship.uid)>-1;});
+    if(!fbExists){
+      state.data.todos.unshift({uid:uid(),title:fbTitle,related_customer:sampleName,priority:'P1',due_date:fbDueStr,status:'待办',notes:'寄样记录：'+ship.uid+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
+      saveData(KEYS.todos,state.data.todos);
+      logActivity('add','待办任务','自动创建跟进待办：'+fbTitle);
+      if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+      if(!silent)toast('已自动创建跟进待办：'+fbTitle,'info');
+    }
   }
-  toast('已自动创建跟进待办：'+title,'info');
+  // 2) 未发货 → 跟进发货待办
+  if((ship.ship_status||'未寄出')!=='已寄出'){
+    var shTitle='跟进车手 '+sampleName+' 的样品发货';
+    var shDue=ship.ship_date||todayStr();
+    var d2=new Date(shDue+'T00:00:00');
+    var p2=function(n){return n<10?'0'+n:n;};
+    var shDueStr=d2.getFullYear()+'-'+p2(d2.getMonth()+1)+'-'+p2(d2.getDate());
+    var shExists=(state.data.todos||[]).some(function(t){return t.title===shTitle&&t.notes&&t.notes.indexOf(ship.uid)>-1;});
+    if(!shExists){
+      state.data.todos.unshift({uid:uid(),title:shTitle,related_customer:sampleName,priority:'P2',due_date:shDueStr,status:'待办',notes:'寄样记录：'+ship.uid+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
+      saveData(KEYS.todos,state.data.todos);
+      logActivity('add','待办任务','自动创建发货跟进待办：'+shTitle);
+      if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+      if(!silent)toast('已自动创建发货跟进待办：'+shTitle,'info');
+    }
+  }
+}
+/* 一键为现有寄样补生成未跟进待办（未反馈 / 未发货） */
+function backfillSampleFollowupTodos(){
+  var ships=state.data.shipments||[];
+  var before=(state.data.todos||[]).length;
+  ships.forEach(function(sh){autoCreateFollowupTodo(sh,true);});
+  var created=(state.data.todos||[]).length-before;
+  renderTable('todos');
+  toast(created>0?('已生成 '+created+' 条未跟进待办'):'没有需要生成的待办（均已跟进）','success');
 }
 /* 删除寄样记录（同步联动删除云端） */
 function deleteShipment(uid){
@@ -4747,6 +4809,7 @@ function setupEvents(){
       else if(action==='add-todo')openRecordModal('todos');
       else if(action==='add-sample')openRecordModal('samples');
       else if(action==='add-shipment')openShipmentModal({sample_id:''});
+      else if(action==='backfill-todos')backfillSampleFollowupTodos();
       else if(action==='add-product')openRecordModal('products');
       else if(action==='add-quote')openQuoteModal();
       else if(action==='add-letter')openOutreachModal('letters');
@@ -5053,6 +5116,25 @@ function setupEvents(){
     catFilter.addEventListener('change',function(){
       state.productCategory=catFilter.value;
       renderProducts();
+    });
+  }
+
+  // Orders status filter
+  var orderStatusFilter=document.getElementById('filter-orders-status');
+  if(orderStatusFilter){
+    orderStatusFilter.addEventListener('change',function(){
+      state.filter.orders=orderStatusFilter.value;
+      renderTable('orders');
+    });
+  }
+
+  // Samples shipment filter
+  var shipFilter=document.getElementById('filter-samples-ship');
+  if(shipFilter){
+    shipFilter.addEventListener('change',function(){
+      state.filter.samples=shipFilter.value;
+      renderSampleCards();
+      if(document.getElementById('view-sample-detail'))renderSampleDetail();
     });
   }
 
