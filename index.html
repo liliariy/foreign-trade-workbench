@@ -1273,8 +1273,8 @@ var TABLE_DEFS={
   },
   orders:{
     name:'订单管理',icon:'i-cart',sbTable:'orders',
-    columns:['order_no','customer_name','product','amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
-    labels:{order_no:'订单号',customer_name:'客户名称',product:'产品',amount:'金额',currency:'货币',status:'状态',order_date:'下单日期',shipping_channel:'物流渠道',tracking_url:'物流链接',ship_date:'发货时间',notes:'备注'}
+    columns:['owner','order_no','customer_name','product','amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
+    labels:{owner:'归属',order_no:'订单号',customer_name:'客户名称',product:'产品',amount:'金额',currency:'货币',status:'状态',order_date:'下单日期',shipping_channel:'物流渠道',tracking_url:'物流链接',ship_date:'发货时间',notes:'备注'}
   },
   todos:{
     name:'待办任务',icon:'i-check',sbTable:'todos',
@@ -1521,8 +1521,8 @@ async function sbPushTable(tableName,records){
       }
       obj[col]=v;
     });
-    /* 自动标记归属 */
-    if((def.central||def.productsBase)&&!obj.owner)obj.owner=state.currentUser||'';
+    /* 自动标记归属：任何含 owner 列的表都打上当前业务员，供后端按 owner 隔离 */
+    if(def.columns.indexOf('owner')>-1&&!obj.owner)obj.owner=state.currentUser||'';
     obj.created_at=r.created_at||new Date().toISOString();
     obj.updated_at=r.updated_at||new Date().toISOString();
     return obj;
@@ -1554,8 +1554,8 @@ async function sbPushTable(tableName,records){
 async function sbPullTable(tableName){
   var def=TABLE_DEFS[tableName]||OUTREACH_DEFS[tableName];
   var query='?select=*&order=created_at.desc&limit=5000';
-  /* 客户表：普通业务员只拉取自己的客户（数据隔离），管理员拉取全部 */
-  if(def.central&&tableName==='customers'&&!state.isAdmin){
+  /* 数据隔离白名单：客户/订单/报价单 按业务员独立；普通业务员只拉自己的，管理员拉全部 */
+  if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes')){
     query='?select=*&owner=eq.'+encodeURIComponent(state.currentUser||'')+'&order=created_at.desc&limit=5000';
   }
   var data=await sbRequest('GET',tableName,query);
@@ -1651,6 +1651,10 @@ async function sbMergeTable(tableName){
     // 3) 本地独有记录
     local.forEach(function(l){
       if(remoteMap[l.uid])return;
+      // 隔离表：其他业务员归属的记录在本地直接丢弃，既不显示也不回传云端
+      if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes')&&l.owner&&l.owner!==state.currentUser){
+        return;
+      }
       if(pushed[l.uid]){
         // 曾确认在云端、现在云端没有 -> 另一端已删除，本地跟随删除（仅本地，不碰云端）
         delete pushed[l.uid];
@@ -1749,6 +1753,9 @@ function def_columns(tableName){
 function addRecord(table,record){
   record.uid=uid();
   record.created_at=new Date().toISOString();
+  // 归属标记：含 owner 列的表在本地也打好归属，保证离线/合并时一致
+  var adef=TABLE_DEFS[table]||OUTREACH_DEFS[table];
+  if(adef&&adef.columns&&adef.columns.indexOf('owner')>-1&&!record.owner)record.owner=state.currentUser||'';
   // 关联表自动补全 customer_id
   if((table==='orders'||table==='samples'||table==='quotes')&&record.customer_name&&!record.customer_id){
     var cust=state.data.customers.find(function(c){return (c.company_name||'').trim()===record.customer_name.trim();});
