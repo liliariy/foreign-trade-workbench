@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.1';</script>
+<script>window.APP_VERSION='v5.1.2';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1697,7 +1697,8 @@ async function findCustomerDup(company_name,email,excludeUid){
 /* 核心：拉取云端 + 双向合并（last-write-wins）+ 增量推送
    原则：先拉后合，绝不盲目全量推送（防止把已删除记录推回云端复活） */
 var syncBusy={};
-async function sbMergeTable(tableName){
+async function sbMergeTable(tableName, opts){
+  opts=opts||{};
   var def=TABLE_DEFS[tableName]||OUTREACH_DEFS[tableName];
   if(!def.sbTable||!tableSyncReady(tableName))return;
   if(syncBusy[tableName])return;
@@ -1791,18 +1792,22 @@ async function sbMergeTable(tableName){
     });
     state.data[tableName]=merged;
     saveData(KEYS[tableName],merged);
-    if(TABLE_DEFS[tableName]){
-      renderModule(tableName);
-      renderDashboard();
-      // shipments 是 hidden 表，renderModule 是空操作；
-      // 但它关联样品管理页的车手卡片统计，同步后需要刷新当前视图
-      if(tableName==='shipments'){
-        var cv=state.currentView;
-        if(cv==='samples')renderSampleCards();
-        else if(cv==='sample-detail')renderSampleDetail();
+    // 有弹窗打开时（skipRender），自动同步只静默更新本地数据，不重绘任何视图，
+    // 避免后台刷新抢走弹窗焦点 / 导致误触背景关闭弹窗、丢失已录入内容
+    if(!opts.skipRender){
+      if(TABLE_DEFS[tableName]){
+        renderModule(tableName);
+        renderDashboard();
+        // shipments 是 hidden 表，renderModule 是空操作；
+        // 但它关联样品管理页的车手卡片统计，同步后需要刷新当前视图
+        if(tableName==='shipments'){
+          var cv=state.currentView;
+          if(cv==='samples')renderSampleCards();
+          else if(cv==='sample-detail')renderSampleDetail();
+        }
+      }else{
+        renderOutreach();
       }
-    }else{
-      renderOutreach();
     }
   }catch(e){
     console.warn('Auto sync '+tableName+' failed:',e.message);
@@ -1819,10 +1824,12 @@ function startAutoSyncPolling(){
   pollingStarted=true;
   setInterval(function(){
     if(!state.currentUser)return;
+    // 弹窗打开期间：自动同步静默进行（更新数据），但不重绘视图，避免干扰正在录入的弹窗
+    var modalOpen=document.getElementById('modal-container')&&document.getElementById('modal-container').children.length;
     Object.keys(TABLE_DEFS).concat(Object.keys(OUTREACH_DEFS)).forEach(function(t){
       var def=TABLE_DEFS[t]||OUTREACH_DEFS[t];
       if(!def.sbTable)return;
-      if(usersReady())sbMergeTable(t).catch(function(e){});
+      if(usersReady())sbMergeTable(t,{skipRender:!!modalOpen}).catch(function(e){});
     });
   },20000);
 }
@@ -2538,6 +2545,12 @@ function openPerformanceModal(data, switchAfter){
   var rec=Object.assign({},data);
   var rate=state.commissionRate&&state.commissionRate.rate!==undefined?state.commissionRate.rate:0;
   if(!rec.commission_rate&&rate)rec.commission_rate=rate;
+  // 草稿恢复：若上次录入业绩弹窗意外关闭，重新打开时自动恢复已填内容
+  if(!isEdit&&window.__perfDraft){
+    Object.keys(window.__perfDraft).forEach(function(k){
+      if(window.__perfDraft[k]!==undefined&&window.__perfDraft[k]!=='')rec[k]=window.__perfDraft[k];
+    });
+  }
   // 关联订单下拉选项（仅本人可见自己的订单；管理员看全部）
   var orderOptions=[{value:'',label:'（不关联）'}].concat((state.data.orders||[])
     .filter(function(o){return state.isAdmin||!o.owner||o.owner===state.currentUser;})
@@ -2581,7 +2594,7 @@ function openPerformanceModal(data, switchAfter){
 
   var html='<div class="modal-overlay show" id="modal-performance">'+
     '<div class="modal" style="max-width:780px;max-height:90vh;overflow-y:auto">'+
-      '<div class="modal-header"><span class="modal-title">'+(isEdit?'编辑':'录入')+'业绩</span><button class="modal-close" onclick="document.getElementById(\'modal-performance\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
+      '<div class="modal-header"><span class="modal-title">'+(isEdit?'编辑':'录入')+'业绩</span><button class="modal-close" onclick="window.__perfDraft=null;document.getElementById(\'modal-performance\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
       '<div class="modal-body perf-form-grid">';
   fields.forEach(function(f){
     if(f.sec){html+='<div class="perf-section-title full">'+f.sec+'</div>';return;}
@@ -2603,7 +2616,7 @@ function openPerformanceModal(data, switchAfter){
     html+='</div>';
   });
   html+='</div>'+
-      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'modal-performance\').remove()">取消</button><button class="btn btn-primary btn-sm" id="perf-save">保存</button></div>'+
+      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="window.__perfDraft=null;document.getElementById(\'modal-performance\').remove()">取消</button><button class="btn btn-primary btn-sm" id="perf-save">保存</button></div>'+
     '</div>'+
   '</div>';
   document.getElementById('modal-container').insertAdjacentHTML('beforeend',html);
@@ -2626,6 +2639,15 @@ function openPerformanceModal(data, switchAfter){
     form.querySelector('[name="commission_amount"]').value=r.commission_amount.toFixed(2);
   }
   fields.forEach(function(f){if(f.sec)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)el.addEventListener('input',recalc);});
+
+  // 草稿暂存：监听输入，实时保存已填内容到 window.__perfDraft，意外关闭可恢复
+  function capturePerfDraft(){
+    var d={};
+    fields.forEach(function(f){if(f.sec||f.readonly)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)d[f.key]=el.value;});
+    window.__perfDraft=d;
+  }
+  form.addEventListener('input',capturePerfDraft);
+  form.addEventListener('change',capturePerfDraft);
 
   // 关联订单：选择后自动带入订单信息（税前金额 + 运费及其他）
   function applyOrderLink(uid){
@@ -2659,6 +2681,7 @@ function openPerformanceModal(data, switchAfter){
     record.owner=state.currentUser||'';
     if(isEdit){updateRecord('performance',data.uid,record); toast('业绩已更新','success');}
     else{addRecord('performance',record); toast('业绩已录入','success');}
+    window.__perfDraft=null;
     document.getElementById('modal-performance').remove();
     renderPerformance();
     if(switchAfter)switchView('performance');
