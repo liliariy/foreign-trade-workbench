@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.2';</script>
+<script>window.APP_VERSION='v5.1.3';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1792,6 +1792,8 @@ async function sbMergeTable(tableName, opts){
     });
     state.data[tableName]=merged;
     saveData(KEYS[tableName],merged);
+    // 订单合并后同步其待办（云端同步进来的开放订单也要进待办列表）
+    if(tableName==='orders')syncOrderTodos(true);
     // 有弹窗打开时（skipRender），自动同步只静默更新本地数据，不重绘任何视图，
     // 避免后台刷新抢走弹窗焦点 / 导致误触背景关闭弹窗、丢失已录入内容
     if(!opts.skipRender){
@@ -1863,6 +1865,7 @@ function addRecord(table,record){
   if(tableSyncReady(table)){
     sbMergeTable(table).catch(function(e){});
   }
+  if(table==='orders')syncOrderTodos();
 }
 function updateRecord(table,recordUid,updates){
   var list=state.data[table];
@@ -1879,6 +1882,7 @@ function updateRecord(table,recordUid,updates){
   if(tableSyncReady(table)){
     sbMergeTable(table).catch(function(e){});
   }
+  if(table==='orders')syncOrderTodos();
 }
 function deleteRecord(table,recordUid){
   var idx=-1;
@@ -1890,6 +1894,7 @@ function deleteRecord(table,recordUid){
   var rec=list[idx];
   list.splice(idx,1);
   saveData(KEYS[table],state.data[table]);
+  if(table==='orders')syncOrderTodos();
   // Remove from selection if selected
   var selIdx=state.selected[table].indexOf(recordUid);
   if(selIdx>-1)state.selected[table].splice(selIdx,1);
@@ -3277,6 +3282,61 @@ function backfillSampleFollowupTodos(){
   var created=(state.data.todos||[]).length-before;
   renderTable('todos');
   toast(created>0?('已生成 '+created+' 条未跟进待办'):'没有需要生成的待办（均已跟进）','success');
+}
+/* 订单同步到待办：状态为「待处理」「生产中」的订单 → 自动建待办；
+   订单状态变化/删除后，对应的订单待办自动清理（按备注里的订单 uid 标记识别） */
+function syncOrderTodos(silent){
+  if(!state.data.orders)return;
+  var orders=state.data.orders;
+  var todos=state.data.todos||(state.data.todos=[]);
+  // 1) 标记所有「待处理 / 生产中」的订单
+  var openMap={};
+  orders.forEach(function(o){
+    if(o.status==='待处理'||o.status==='生产中')openMap[o.uid]=o;
+  });
+  // 2) 清理：订单待办（备注带【订单待办:UID】）若对应订单已不在开放状态 → 移除
+  var kept=[];
+  var removed=0;
+  todos.forEach(function(t){
+    var m=t.notes&&t.notes.match(/【订单待办:([^】]+)】/);
+    if(m){
+      if(openMap[m[1]]){kept.push(t);}       // 订单仍开放 → 保留
+      else{removed++;}                        // 订单已无/已变化 → 删除该待办
+    }else{
+      kept.push(t);                           // 非订单待办（手动/寄样）→ 不动
+    }
+  });
+  // 3) 已存在订单待办的，标记 openMap 以免重复创建
+  kept.forEach(function(t){
+    var m=t.notes&&t.notes.match(/【订单待办:([^】]+)】/);
+    if(m)openMap[m[1]]=null;
+  });
+  // 4) 为尚无待办的开放订单创建待办
+  var created=0;
+  orders.forEach(function(o){
+    if((o.status==='待处理'||o.status==='生产中')&&openMap[o.uid]){
+      kept.unshift({
+        uid:uid(),
+        title:(o.status==='待处理'?'订单待处理':'订单生产中')+'：'+(o.order_no||'')+' · '+(o.customer_name||''),
+        related_customer:o.customer_name||'',
+        priority:o.status==='待处理'?'P1':'P2',
+        due_date:o.order_date||todayStr(),
+        status:'待办',
+        notes:'【订单待办:'+o.uid+'】来自订单 '+(o.order_no||o.uid)+'（'+(o.customer_name||'')+'）',
+        created_at:new Date().toISOString()
+      });
+      created++;
+      openMap[o.uid]=null;
+    }
+  });
+  if(removed||created){
+    state.data.todos=kept;
+    saveData(KEYS.todos,kept);
+    renderTable('todos');
+    updateBadges();
+    if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+    if(!silent)toast((created?('已同步 '+created+' 条订单待办'):'')+(removed?('，清理 '+removed+' 条已结束订单待办'):''),'info');
+  }
 }
 /* 删除寄样记录（同步联动删除云端） */
 function deleteShipment(uid){
