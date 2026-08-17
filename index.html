@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.0.9';</script>
+<script>window.APP_VERSION='v5.1.0';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -639,6 +639,23 @@ a{color:var(--primary);text-decoration:none}
 .btn-block{width:100%;margin-top:8px;padding:11px 0;font-size:15px;border-radius:10px}
 .header-user{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--text);padding:0 8px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
 
+/* ========== Performance Module ========== */
+.perf-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.perf-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.perf-card .label{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.perf-card .value{font-size:22px;font-weight:700;color:var(--text)}
+.perf-card .value.currency{color:var(--primary)}
+.perf-card .value.commission{color:var(--success)}
+.perf-section-title{font-size:13px;font-weight:600;color:var(--primary);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.perf-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.perf-form-grid .full{grid-column:1/-1}
+.perf-form-grid .half{grid-column:span 2}
+@media(max-width:900px){.perf-form-grid{grid-template-columns:repeat(2,1fr)}.perf-form-grid .half{grid-column:span 2}}
+@media(max-width:600px){.perf-form-grid{grid-template-columns:1fr}.perf-form-grid .half{grid-column:1/-1}}
+.table-responsive{overflow-x:auto}
+#table-performance th,#table-performance td{white-space:nowrap;font-size:12px}
+#table-performance td{max-width:160px;overflow:hidden;text-overflow:ellipsis}
+
 </style>
 </head>
 <body>
@@ -664,6 +681,7 @@ a{color:var(--primary);text-decoration:none}
 <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></symbol>
 <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
 <symbol id="i-trending" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+<symbol id="i-calculator" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="14.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></symbol>
 <symbol id="i-inbox" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
 <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
 <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
@@ -699,6 +717,7 @@ a{color:var(--primary);text-decoration:none}
       <button class="nav-item" data-view="samples"><svg class="icon"><use href="#i-package"/></svg> 样品管理 <span class="badge" id="badge-samples" style="display:none"></span></button>
       <button class="nav-item" data-view="products"><svg class="icon"><use href="#i-box"/></svg> 产品管理 <span class="badge" id="badge-products" style="display:none"></span></button>
       <button class="nav-item" data-view="quotes"><svg class="icon"><use href="#i-file-text"/></svg> 报价单 <span class="badge" id="badge-quotes" style="display:none"></span></button>
+      <button class="nav-item" data-view="performance"><svg class="icon"><use href="#i-trending"/></svg> 业绩汇总 <span class="badge" id="badge-performance" style="display:none"></span></button>
       <button class="nav-item" data-view="outreach"><svg class="icon"><use href="#i-mail"/></svg> 开发信 <span class="badge" id="badge-outreach" style="display:none"></span></button>
     </nav>
     <div class="sidebar-footer">
@@ -1145,6 +1164,63 @@ a{color:var(--primary);text-decoration:none}
         </div>
       </section>
 
+      <!-- Performance View -->
+      <section id="view-performance" class="view">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <svg class="icon-sm search-icon"><use href="#i-search"/></svg>
+            <input type="text" id="search-performance" placeholder="搜索客户、订单号、产品型号...">
+          </div>
+          <button class="btn btn-outline btn-sm" data-action="commission-config"><svg class="icon-sm"><use href="#i-settings"/></svg> 我的提成</button>
+          <button class="btn btn-outline btn-sm" data-action="exchange-calc"><svg class="icon-sm"><use href="#i-calculator"/></svg> 汇率换算</button>
+          <button class="btn btn-primary btn-sm" data-action="add-performance"><svg class="icon-sm"><use href="#i-plus"/></svg> 录入业绩</button>
+          <button class="btn btn-outline btn-sm" data-sync="performance"><svg class="icon-sm"><use href="#i-sync"/></svg> 同步</button>
+        </div>
+        <div class="perf-summary" id="perf-summary"></div>
+        <div class="table-responsive" id="perf-table-wrap">
+          <table class="data-table" id="table-performance" style="display:none">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" class="select-all-cb" data-table="performance"></th>
+                <th>月份</th>
+                <th>客户</th>
+                <th>联系方式</th>
+                <th>订单编号</th>
+                <th>产品型号</th>
+                <th>产品名称</th>
+                <th>预计交货</th>
+                <th>单价</th>
+                <th>不含税价</th>
+                <th>运费及其他</th>
+                <th>订单金额</th>
+                <th>收款1</th>
+                <th>收款2</th>
+                <th>收款合计</th>
+                <th>未付金</th>
+                <th>实际出货</th>
+                <th>出货方式</th>
+                <th>收货地址</th>
+                <th>出货运费</th>
+                <th>报价详情</th>
+                <th>国家</th>
+                <th>收款账号</th>
+                <th>汇率</th>
+                <th>人民币金额</th>
+                <th>提成率</th>
+                <th>提成金额</th>
+                <th class="td-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="empty-performance" style="display:none">
+          <svg><use href="#i-trending"/></svg>
+          <p>暂无业绩记录</p>
+          <button class="btn btn-primary btn-sm" data-action="add-performance"><svg class="icon-sm"><use href="#i-plus"/></svg> 录入第一条业绩</button>
+        </div>
+      </section>
+
 <!-- Mobile Tab Bar -->
 <nav class="mobile-tabbar">
   <button class="nav-item active" data-view="dashboard"><svg class="icon"><use href="#i-grid"/></svg> 概览</button>
@@ -1154,6 +1230,7 @@ a{color:var(--primary);text-decoration:none}
   <button class="nav-item" data-view="samples"><svg class="icon"><use href="#i-package"/></svg> 样品</button>
   <button class="nav-item" data-view="products"><svg class="icon"><use href="#i-box"/></svg> 产品</button>
   <button class="nav-item" data-view="quotes"><svg class="icon"><use href="#i-file-text"/></svg> 报价</button>
+  <button class="nav-item" data-view="performance"><svg class="icon"><use href="#i-trending"/></svg> 业绩</button>
   <button class="nav-item" data-view="outreach"><svg class="icon"><use href="#i-mail"/></svg> 开发信</button>
 </nav>
 
@@ -1302,6 +1379,11 @@ var TABLE_DEFS={
     columns:['owner','quote_no','customer_name','contact','date','valid_until','currency','items','subtotal','total','status','notes'],
     labels:{owner:'归属',quote_no:'报价单号',customer_name:'客户名称',contact:'联系人',date:'报价日期',valid_until:'有效期至',currency:'货币',items:'产品明细',subtotal:'产品小计',total:'报价总额',status:'状态',notes:'备注'},
     jsonColumns:['items']
+  },
+  performance:{
+    name:'业绩汇总',icon:'i-trending',sbTable:'performance',private:true,
+    columns:['owner','month','customer_name','contact','order_no','product_model','product_name','estimated_ship_date','unit_price','currency','exchange_rate','cny_equivalent','tax_excluded_price','shipping_other','order_amount','payment1','payment2','payment_total','unpaid','actual_ship_date','ship_method','ship_address','ship_fee','quote_details','country','receiving_account','commission_rate','commission_amount','notes'],
+    labels:{owner:'归属',month:'月份',customer_name:'客户名称',contact:'联系方式',order_no:'订单编号',product_model:'产品型号',product_name:'产品名称',estimated_ship_date:'预计交货日期',unit_price:'单价',currency:'货币',exchange_rate:'汇率',cny_equivalent:'人民币金额',tax_excluded_price:'不含税价',shipping_other:'运费及其他',order_amount:'订单金额',payment1:'收款1',payment2:'收款2',payment_total:'收款合计',unpaid:'未付金',actual_ship_date:'实际出货日期',ship_method:'出货方式',ship_address:'收货地址',ship_fee:'出货运费',quote_details:'报价详情',country:'国家',receiving_account:'收款账号',commission_rate:'提成率',commission_amount:'提成金额',notes:'备注'}
   }
 };
 
@@ -1341,10 +1423,10 @@ var STATUS_BADGE={
 /* ========== State ========== */
 var state={
   currentView:'dashboard',
-  data:{customers:[],orders:[],todos:[],samples:[],shipments:[],products:[],quotes:[],letters:[],socials:[],devimages:[],follow_ups:[],payments:[]},
-  search:{customers:'',orders:'',todos:'',samples:'',products:'',quotes:'',letters:'',socials:'',devimages:''},
+  data:{customers:[],orders:[],todos:[],samples:[],shipments:[],products:[],quotes:[],performance:[],letters:[],socials:[],devimages:[],follow_ups:[],payments:[]},
+  search:{customers:'',orders:'',todos:'',samples:'',products:'',quotes:'',performance:'',letters:'',socials:'',devimages:''},
   filter:{orders:'',samples:''},
-  selected:{customers:[],orders:[],todos:[],samples:[],products:[]},
+  selected:{customers:[],orders:[],todos:[],samples:[],products:[],performance:[]},
   currentCustomerId:null,
   currentCustomerTab:'logs',
   productCategory:'',
@@ -1354,7 +1436,9 @@ var state={
   activities:[],
   isAdmin:false,
   editing:{table:null,uid:null},
-  quoteDraft:null
+  quoteDraft:null,
+  commissionRate:null,
+  exchangeRate:{USD_CNY:null}
 };
 
 /* ========== Utility ========== */
@@ -1554,8 +1638,8 @@ async function sbPushTable(tableName,records){
 async function sbPullTable(tableName){
   var def=TABLE_DEFS[tableName]||OUTREACH_DEFS[tableName];
   var query='?select=*&order=created_at.desc&limit=5000';
-  /* 数据隔离白名单：客户/订单/报价单 按业务员独立；普通业务员只拉自己的，管理员拉全部 */
-  if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes')){
+  /* 数据隔离白名单：客户/订单/报价单/业绩汇总/提成配置 按业务员独立；普通业务员只拉自己的，管理员拉全部 */
+  if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes'||tableName==='performance'||tableName==='commission_rates')){
     query='?select=*&owner=eq.'+encodeURIComponent(state.currentUser||'')+'&order=created_at.desc&limit=5000';
   }
   var data=await sbRequest('GET',tableName,query);
@@ -1652,7 +1736,7 @@ async function sbMergeTable(tableName){
     local.forEach(function(l){
       if(remoteMap[l.uid])return;
       // 隔离表：其他业务员归属的记录在本地直接丢弃，既不显示也不回传云端
-      if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes')&&l.owner&&l.owner!==state.currentUser){
+      if(!state.isAdmin&&(tableName==='customers'||tableName==='orders'||tableName==='quotes'||tableName==='performance'||tableName==='commission_rates')&&l.owner&&l.owner!==state.currentUser){
         return;
       }
       if(pushed[l.uid]){
@@ -1918,7 +2002,7 @@ function switchView(view){
   document.querySelectorAll('.nav-item[data-view]').forEach(function(el){
     el.classList.toggle('active',el.dataset.view===view);
   });
-  var titles={dashboard:'概览',customers:'客户管理',orders:'订单管理',todos:'待办任务',samples:'样品管理',products:'产品管理',quotes:'报价单',outreach:'开发信','customer-detail':'客户详情','sample-detail':'车手详情'};
+  var titles={dashboard:'概览',customers:'客户管理',orders:'订单管理',todos:'待办任务',samples:'样品管理',products:'产品管理',quotes:'报价单',performance:'业绩汇总',outreach:'开发信','customer-detail':'客户详情','sample-detail':'车手详情'};
   document.getElementById('header-title').textContent=titles[view]||'概览';
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
@@ -1928,6 +2012,7 @@ function switchView(view){
   else if(view==='outreach')renderOutreach();
   else if(view==='products')renderProducts();
   else if(view==='quotes')renderQuotes();
+  else if(view==='performance'){renderPerformance(); loadCommissionRate().then(fetchExchangeRate.bind(null,'USD','CNY'));}
   else if(view==='customer-detail')renderCustomerDetail();
   else if(view==='sample-detail')renderSampleDetail();
   else if(view==='samples'){
@@ -2262,6 +2347,291 @@ function renderQuotes(){
       '</div>'+
     '</div>';
   }).join('');
+}
+
+/* ========== UI: Performance Module ========== */
+function renderPerformance(){
+  var wrap=document.getElementById('perf-table-wrap');
+  var tbody=document.querySelector('#table-performance tbody');
+  var empty=document.getElementById('empty-performance');
+  var summary=document.getElementById('perf-summary');
+  if(!tbody)return;
+  var data=state.data.performance||[];
+  var kw=(state.search.performance||'').toLowerCase();
+  if(kw){
+    data=data.filter(function(r){
+      return [r.customer_name,r.order_no,r.product_model,r.product_name,r.country].some(function(v){return v&&String(v).toLowerCase().indexOf(kw)>-1;});
+    });
+  }
+
+  // 汇总统计（仅当前业务员可见自己的业绩）
+  var totalOrder=data.reduce(function(s,r){return s+Number(r.order_amount||0);},0);
+  var totalPayment=data.reduce(function(s,r){return s+Number(r.payment_total||0);},0);
+  var totalUnpaid=data.reduce(function(s,r){return s+Number(r.unpaid||0);},0);
+  var totalCny=data.reduce(function(s,r){return s+Number(r.cny_equivalent||0);},0);
+  var totalCommission=data.reduce(function(s,r){return s+Number(r.commission_amount||0);},0);
+  if(summary){
+    summary.innerHTML='<div class="perf-card"><div class="label">订单金额合计</div><div class="value currency">'+formatMoney(totalOrder,'USD')+'</div></div>'+
+      '<div class="perf-card"><div class="label">人民币金额合计</div><div class="value">'+formatMoney(totalCny,'CNY')+'</div></div>'+
+      '<div class="perf-card"><div class="label">收款合计</div><div class="value">'+formatMoney(totalPayment,'USD')+'</div></div>'+
+      '<div class="perf-card"><div class="label">未付金合计</div><div class="value" style="color:var(--danger)">'+formatMoney(totalUnpaid,'USD')+'</div></div>'+
+      '<div class="perf-card"><div class="label">预计提成合计</div><div class="value commission">'+formatMoney(totalCommission,'CNY')+'</div></div>';
+  }
+
+  if(!data.length){
+    tbody.innerHTML='';
+    if(empty)empty.style.display='block';
+    document.getElementById('table-performance').style.display='none';
+    return;
+  }
+  if(empty)empty.style.display='none';
+  document.getElementById('table-performance').style.display='';
+
+  tbody.innerHTML=data.map(function(r){
+    return '<tr>'+
+      '<td class="col-check"><input type="checkbox" class="row-cb" data-table="performance" data-uid="'+r.uid+'"></td>'+
+      '<td>'+escapeHtml(r.month||'-')+'</td>'+
+      '<td>'+escapeHtml(r.customer_name||'-')+'</td>'+
+      '<td>'+escapeHtml(r.contact||'-')+'</td>'+
+      '<td>'+escapeHtml(r.order_no||'-')+'</td>'+
+      '<td>'+escapeHtml(r.product_model||'-')+'</td>'+
+      '<td>'+escapeHtml(r.product_name||'-')+'</td>'+
+      '<td>'+formatDate(r.estimated_ship_date)+'</td>'+
+      '<td>'+formatMoney(r.unit_price,r.currency)+'</td>'+
+      '<td>'+formatMoney(r.tax_excluded_price,r.currency)+'</td>'+
+      '<td>'+formatMoney(r.shipping_other,r.currency)+'</td>'+
+      '<td><strong>'+formatMoney(r.order_amount,r.currency)+'</strong></td>'+
+      '<td>'+formatMoney(r.payment1,r.currency)+'</td>'+
+      '<td>'+formatMoney(r.payment2,r.currency)+'</td>'+
+      '<td>'+formatMoney(r.payment_total,r.currency)+'</td>'+
+      '<td style="color:var(--danger);font-weight:600">'+formatMoney(r.unpaid,r.currency)+'</td>'+
+      '<td>'+formatDate(r.actual_ship_date)+'</td>'+
+      '<td>'+escapeHtml(r.ship_method||'-')+'</td>'+
+      '<td title="'+escapeHtml(r.ship_address||'')+'">'+escapeHtml(r.ship_address||'-')+'</td>'+
+      '<td>'+formatMoney(r.ship_fee,r.currency)+'</td>'+
+      '<td title="'+escapeHtml(r.quote_details||'')+'">'+escapeHtml(r.quote_details||'-')+'</td>'+
+      '<td>'+escapeHtml(r.country||'-')+'</td>'+
+      '<td>'+escapeHtml(r.receiving_account||'-')+'</td>'+
+      '<td>'+Number(r.exchange_rate||0).toFixed(4)+'</td>'+
+      '<td>'+formatMoney(r.cny_equivalent,'CNY')+'</td>'+
+      '<td>'+((Number(r.commission_rate||0)*100).toFixed(2))+'%</td>'+
+      '<td>'+formatMoney(r.commission_amount,'CNY')+'</td>'+
+      '<td class="td-actions"><button class="edit-btn" data-table="performance" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-edit"/></svg></button><button class="delete delete-btn" data-table="performance" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-trash"/></svg></button></td>'+
+    '</tr>';
+  }).join('');
+  updateBatchBar('performance');
+}
+
+function calcPerformance(r){
+  var amount=Number(r.order_amount||0);
+  var p1=Number(r.payment1||0), p2=Number(r.payment2||0);
+  r.payment_total=p1+p2;
+  r.unpaid=Math.max(0,amount-r.payment_total);
+  var rate=Number(r.exchange_rate||0);
+  if(rate>0) r.cny_equivalent=amount*rate;
+  else r.cny_equivalent=0;
+  var commRate=Number(r.commission_rate||0);
+  r.commission_amount=commRate>0&&r.cny_equivalent>0?r.cny_equivalent*commRate:0;
+  return r;
+}
+
+async function loadCommissionRate(){
+  if(!usersReady()||!state.currentUser)return;
+  try{
+    var resp=await fetch(API_URL+'?action=commission-get&owner='+encodeURIComponent(state.currentUser));
+    if(resp.ok){state.commissionRate=await resp.json();}
+  }catch(e){console.warn('load commission rate failed',e);}
+}
+
+async function saveCommissionRate(rate,notes){
+  if(!usersReady()||!state.currentUser)return;
+  try{
+    var resp=await fetch(API_URL+'?action=commission-set&owner='+encodeURIComponent(state.currentUser),{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rate:Number(rate)||0,notes:notes||''})
+    });
+    if(resp.ok){state.commissionRate=await resp.json();toast('提成率已保存','success');}
+    else throw new Error('');
+  }catch(e){toast('保存提成率失败','error');}
+}
+
+async function fetchExchangeRate(from,to){
+  from=from||'USD';to=to||'CNY';
+  try{
+    var resp=await fetch(API_URL+'?action=exchange-rate&from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
+    if(resp.ok){
+      var j=await resp.json();
+      if(from==='USD'&&to==='CNY')state.exchangeRate.USD_CNY=j.rate;
+      return j;
+    }
+  }catch(e){console.warn('fetch exchange rate failed',e);}
+  return {rate:state.exchangeRate.USD_CNY||7.2,source:'fallback'};
+}
+
+function openCommissionModal(){
+  var rate=state.commissionRate&&state.commissionRate.rate!==undefined?Number(state.commissionRate.rate):0;
+  var notes=(state.commissionRate&&state.commissionRate.notes)||'';
+  var html='<div class="modal-overlay show" id="modal-commission">'+
+    '<div class="modal" style="max-width:420px">'+
+      '<div class="modal-header"><span class="modal-title">我的提成设置</span><button class="modal-close" onclick="document.getElementById(\'modal-commission\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-group"><label class="form-label">提成率（小数，如 0.03 = 3%）</label><input class="form-input" type="number" step="0.001" min="0" max="1" id="comm-rate" value="'+rate+'"></div>'+
+        '<div class="form-group"><label class="form-label">备注</label><input class="form-input" type="text" id="comm-notes" value="'+escapeHtml(notes)+'"></div>'+
+        '<div class="form-hint">提成率仅本人可见，不会共享给其他业务员。</div>'+
+      '</div>'+
+      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'modal-commission\').remove()">取消</button><button class="btn btn-primary btn-sm" id="comm-save">保存</button></div>'+
+    '</div>'+
+  '</div>';
+  document.getElementById('modal-container').insertAdjacentHTML('beforeend',html);
+  document.getElementById('comm-save').onclick=function(){
+    var r=Number(document.getElementById('comm-rate').value)||0;
+    var n=document.getElementById('comm-notes').value;
+    saveCommissionRate(r,n);
+    document.getElementById('modal-commission').remove();
+  };
+}
+
+function openExchangeModal(){
+  var html='<div class="modal-overlay show" id="modal-exchange">'+
+    '<div class="modal" style="max-width:420px">'+
+      '<div class="modal-header"><span class="modal-title">实时汇率换算</span><button class="modal-close" onclick="document.getElementById(\'modal-exchange\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
+      '<div class="modal-body">'+
+        '<div class="form-row">'+
+          '<div class="form-group"><label class="form-label">货币</label><select class="form-select" id="ex-from"><option value="USD" selected>USD 美元</option><option value="CNY">CNY 人民币</option></select></div>'+
+          '<div class="form-group" style="text-align:center;padding-top:28px"><svg class="icon"><use href="#i-arrow-right"/></svg></div>'+
+          '<div class="form-group"><label class="form-label">目标</label><select class="form-select" id="ex-to"><option value="USD">USD 美元</option><option value="CNY" selected>CNY 人民币</option></select></div>'+
+        '</div>'+
+        '<div class="form-group"><label class="form-label">金额</label><input class="form-input" type="number" id="ex-amount" value="1000" step="0.01"></div>'+
+        '<div class="form-group"><label class="form-label">汇率（可手动修改）</label><input class="form-input" type="number" id="ex-rate" step="0.0001"></div>'+
+        '<div class="card" style="padding:14px"><div class="form-label">换算结果</div><div style="font-size:22px;font-weight:700;color:var(--primary)" id="ex-result">-</div><div class="form-hint" id="ex-source">-</div></div>'+
+      '</div>'+
+      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'modal-exchange\').remove()">关闭</button><button class="btn btn-primary btn-sm" id="ex-calc">刷新汇率/计算</button></div>'+
+    '</div>'+
+  '</div>';
+  document.getElementById('modal-container').insertAdjacentHTML('beforeend',html);
+  async function calc(){
+    var from=document.getElementById('ex-from').value;
+    var to=document.getElementById('ex-to').value;
+    var info=await fetchExchangeRate(from,to);
+    document.getElementById('ex-rate').value=Number(info.rate).toFixed(4);
+    var amt=Number(document.getElementById('ex-amount').value)||0;
+    var rate=Number(document.getElementById('ex-rate').value)||0;
+    var res=amt*rate;
+    var sym=to==='CNY'?'¥':to==='EUR'?'€':'$';
+    document.getElementById('ex-result').textContent=sym+res.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+to;
+    document.getElementById('ex-source').textContent='汇率来源：'+(info.source==='live'?'实时接口':info.source==='cache'?'本地缓存':'默认 fallback');
+  }
+  ['ex-from','ex-to','ex-amount','ex-rate'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',calc);
+  });
+  document.getElementById('ex-calc').onclick=calc;
+  calc();
+}
+
+function openPerformanceModal(data){
+  data=data||{};
+  var isEdit=!!data.uid;
+  var rec=Object.assign({},data);
+  var rate=state.commissionRate&&state.commissionRate.rate!==undefined?state.commissionRate.rate:0;
+  if(!rec.commission_rate&&rate)rec.commission_rate=rate;
+  var fields=[
+    {sec:'订单下单信息'},
+    {key:'month',label:'月份',type:'month',value:rec.month||todayStr().slice(0,7)},
+    {key:'customer_name',label:'客户名称',type:'text',value:rec.customer_name||''},
+    {key:'contact',label:'联系方式',type:'text',value:rec.contact||''},
+    {key:'order_no',label:'订单编号',type:'text',value:rec.order_no||''},
+    {key:'product_model',label:'产品型号',type:'text',value:rec.product_model||''},
+    {key:'product_name',label:'产品名称',type:'text',value:rec.product_name||''},
+    {key:'estimated_ship_date',label:'预计交货日期',type:'date',value:rec.estimated_ship_date||''},
+    {key:'unit_price',label:'单价',type:'number',value:rec.unit_price||0},
+    {sec:'订单报价信息'},
+    {key:'tax_excluded_price',label:'不含税价',type:'number',value:rec.tax_excluded_price||0},
+    {key:'shipping_other',label:'运费及其他',type:'number',value:rec.shipping_other||0},
+    {key:'order_amount',label:'订单金额',type:'number',value:rec.order_amount||0},
+    {sec:'订单收款信息'},
+    {key:'payment1',label:'收款1',type:'number',value:rec.payment1||0},
+    {key:'payment2',label:'收款2',type:'number',value:rec.payment2||0},
+    {key:'payment_total',label:'收款合计（自动计算）',type:'number',value:rec.payment_total||0,readonly:true},
+    {key:'unpaid',label:'未付金（自动计算）',type:'number',value:rec.unpaid||0,readonly:true},
+    {sec:'出货信息'},
+    {key:'actual_ship_date',label:'实际出货日期',type:'date',value:rec.actual_ship_date||''},
+    {key:'ship_method',label:'出货方式',type:'text',value:rec.ship_method||''},
+    {key:'ship_address',label:'收货地址',type:'textarea',value:rec.ship_address||''},
+    {key:'ship_fee',label:'出货运费',type:'number',value:rec.ship_fee||0},
+    {key:'quote_details',label:'报价详情',type:'textarea',value:rec.quote_details||''},
+    {key:'country',label:'国家',type:'text',value:rec.country||''},
+    {key:'receiving_account',label:'收款账号',type:'text',value:rec.receiving_account||''},
+    {sec:'汇率与提成'},
+    {key:'currency',label:'货币',type:'select',options:['USD','CNY','EUR'],value:rec.currency||'USD'},
+    {key:'exchange_rate',label:'汇率（USD→CNY）',type:'number',value:rec.exchange_rate||0},
+    {key:'cny_equivalent',label:'人民币金额（自动计算）',type:'number',value:rec.cny_equivalent||0,readonly:true},
+    {key:'commission_rate',label:'提成率（小数）',type:'number',value:rec.commission_rate||0,step:0.001},
+    {key:'commission_amount',label:'提成金额（自动计算）',type:'number',value:rec.commission_amount||0,readonly:true},
+    {key:'notes',label:'备注',type:'textarea',value:rec.notes||''}
+  ];
+
+  var html='<div class="modal-overlay show" id="modal-performance">'+
+    '<div class="modal" style="max-width:780px;max-height:90vh;overflow-y:auto">'+
+      '<div class="modal-header"><span class="modal-title">'+(isEdit?'编辑':'录入')+'业绩</span><button class="modal-close" onclick="document.getElementById(\'modal-performance\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
+      '<div class="modal-body perf-form-grid">';
+  fields.forEach(function(f){
+    if(f.sec){html+='<div class="perf-section-title full">'+f.sec+'</div>';return;}
+    html+='<div class="form-group'+(f.full?' full':'')+'">'+
+      '<label class="form-label">'+f.label+'</label>';
+    if(f.type==='select'){
+      html+='<select class="form-select" name="'+f.key+'"'+(f.readonly?' disabled':'')+'>';
+      f.options.forEach(function(o){html+='<option value="'+o+'"'+(f.value===o?' selected':'')+'>'+o+'</option>';});
+      html+='</select>';
+    }else if(f.type==='textarea'){
+      html+='<textarea class="form-textarea" name="'+f.key+'"'+(f.readonly?' readonly':'')+'>'+escapeHtml(String(f.value||''))+'</textarea>';
+    }else{
+      html+='<input class="form-input" type="'+f.type+'" name="'+f.key+'" value="'+escapeHtml(String(f.value!==undefined?f.value:''))+'"'+(f.step?' step="'+f.step+'"':'')+(f.readonly?' readonly':'')+'>';
+    }
+    html+='</div>';
+  });
+  html+='</div>'+
+      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'modal-performance\').remove()">取消</button><button class="btn btn-primary btn-sm" id="perf-save">保存</button></div>'+
+    '</div>'+
+  '</div>';
+  document.getElementById('modal-container').insertAdjacentHTML('beforeend',html);
+
+  var form=document.querySelector('#modal-performance .modal-body');
+  function recalc(){
+    var vals={};
+    fields.forEach(function(f){if(f.sec)return; var el=form.querySelector('[name="'+f.key+'"]'); vals[f.key]=el?el.value:'';});
+    var r=calcPerformance({
+      order_amount:Number(vals.order_amount)||0,
+      payment1:Number(vals.payment1)||0,
+      payment2:Number(vals.payment2)||0,
+      exchange_rate:Number(vals.exchange_rate)||0,
+      commission_rate:Number(vals.commission_rate)||0,
+      currency:vals.currency||'USD'
+    });
+    form.querySelector('[name="payment_total"]').value=r.payment_total.toFixed(2);
+    form.querySelector('[name="unpaid"]').value=r.unpaid.toFixed(2);
+    form.querySelector('[name="cny_equivalent"]').value=r.cny_equivalent.toFixed(2);
+    form.querySelector('[name="commission_amount"]').value=r.commission_amount.toFixed(2);
+  }
+  fields.forEach(function(f){if(f.sec)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)el.addEventListener('input',recalc);});
+
+  // auto fetch rate when currency USD
+  if((rec.currency||'USD')==='USD'){
+    fetchExchangeRate('USD','CNY').then(function(info){
+      var el=form.querySelector('[name="exchange_rate"]');
+      if(el&&!Number(el.value))el.value=Number(info.rate).toFixed(4);
+      recalc();
+    });
+  }
+
+  document.getElementById('perf-save').onclick=function(){
+    var record={};
+    fields.forEach(function(f){if(f.sec)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)record[f.key]=f.type==='number'?Number(el.value)||0:el.value;});
+    record=calcPerformance(record);
+    record.owner=state.currentUser||'';
+    if(isEdit){updateRecord('performance',data.uid,record); toast('业绩已更新','success');}
+    else{addRecord('performance',record); toast('业绩已录入','success');}
+    document.getElementById('modal-performance').remove();
+    renderPerformance();
+  };
 }
 
 /* ========== Samples: 车手档案 + 多次寄样记录 ========== */
@@ -2904,6 +3274,7 @@ function deleteSampleProfile(uid){
 function renderModule(tableName){
   if(tableName==='products')renderProducts();
   else if(tableName==='quotes')renderQuotes();
+  else if(tableName==='performance')renderPerformance();
   else renderTable(tableName);
 }
 
@@ -4822,6 +5193,9 @@ function setupEvents(){
       else if(action==='add-letter')openOutreachModal('letters');
       else if(action==='add-social')openOutreachModal('socials');
       else if(action==='add-devimage')openOutreachModal('devimages');
+      else if(action==='add-performance')openPerformanceModal();
+      else if(action==='commission-config')openCommissionModal();
+      else if(action==='exchange-calc')openExchangeModal();
       else if(action==='sync')openSettingsModal();
     }
 
@@ -4965,7 +5339,9 @@ function setupEvents(){
       var table=editBtn.dataset.table;
       var recordUid=editBtn.dataset.uid;
       var rec=state.data[table].find(function(r){return r.uid===recordUid;});
-      if(rec)openRecordModal(table,rec);
+      if(!rec)return;
+      if(table==='performance')openPerformanceModal(rec);
+      else openRecordModal(table,rec);
     }
     
     // Delete button
@@ -4979,6 +5355,7 @@ function setupEvents(){
         deleteRecord(dt,du);
         if(state.currentView==='customer-detail')renderCustomerDetail();
         else if(dt==='products')renderProducts();
+        else if(dt==='performance')renderPerformance();
         else renderTable(dt);
         renderDashboard();
         toast('已删除','success');
@@ -5105,13 +5482,14 @@ function setupEvents(){
   });
 
   // Search
-  ['customers','orders','todos','samples','products','quotes'].forEach(function(t){
+  ['customers','orders','todos','samples','products','quotes','performance'].forEach(function(t){
     var el=document.getElementById('search-'+t);
     if(el){
       el.addEventListener('input',function(){
         state.search[t]=el.value;
         if(t==='products')renderProducts();
         else if(t==='quotes')renderQuotes();
+        else if(t==='performance')renderPerformance();
         else renderTable(t);
       });
     }
