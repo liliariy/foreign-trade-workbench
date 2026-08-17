@@ -108,7 +108,9 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `order_no` VARCHAR(50) DEFAULT '',
   `customer_name` VARCHAR(255) DEFAULT '',
   `product` TEXT,
-  `amount` DECIMAL(12,2) DEFAULT 0,
+  `amount` DECIMAL(12,2) DEFAULT 0 COMMENT '税前金额',
+  `shipping_other` DECIMAL(12,2) DEFAULT 0 COMMENT '运费及其他',
+  `total_amount` DECIMAL(12,2) DEFAULT 0 COMMENT '总计金额（税前+运费及其他）',
   `currency` VARCHAR(10) DEFAULT 'USD',
   `status` VARCHAR(20) DEFAULT '待处理',
   `order_date` DATE,
@@ -178,6 +180,7 @@ CREATE TABLE IF NOT EXISTS `quotes` (
 CREATE TABLE IF NOT EXISTS `performance` (
   `uid` VARCHAR(50) PRIMARY KEY,
   `owner` VARCHAR(50) NOT NULL DEFAULT '',
+  `order_uid` VARCHAR(50) DEFAULT '' COMMENT '关联订单 uid',
   `month` VARCHAR(20) DEFAULT '',
   `customer_name` VARCHAR(255) DEFAULT '',
   `contact` VARCHAR(255) DEFAULT '',

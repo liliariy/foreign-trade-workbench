@@ -94,12 +94,12 @@ function get_columns($table) {
         'samples' => ['owner','name','type','address','phone','email','country','cooperation_status','notes'],
         'sample_shipments' => ['sample_id','owner','ship_date','product_name','product_model','quantity','reason','shipping_channel','tracking_no','ship_status','receipt_status','test_status','test_feedback','feedback_status','feedback_channel','notes','items'],
         'product' => ['owner','name','model','category','params','price','image','notes'],
-        'orders' => ['owner','order_no','customer_name','product','amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
+        'orders' => ['owner','order_no','customer_name','product','amount','shipping_other','total_amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
         'todos' => ['title','related_customer','priority','due_date','status','notes'],
         'letters' => ['title','subject','tags','content'],
         'socials' => ['title','platform','tags','content'],
         'quotes' => ['owner','quote_no','customer_name','contact','date','valid_until','currency','items','subtotal','total','status','notes'],
-        'performance' => ['owner','month','customer_name','contact','order_no','product_model','product_name','estimated_ship_date','unit_price','currency','exchange_rate','cny_equivalent','tax_excluded_price','shipping_other','order_amount','payment1','payment2','payment_total','unpaid','actual_ship_date','ship_method','ship_address','ship_fee','quote_details','country','receiving_account','commission_rate','commission_amount','notes'],
+        'performance' => ['owner','order_uid','month','customer_name','contact','order_no','product_model','product_name','estimated_ship_date','unit_price','currency','exchange_rate','cny_equivalent','tax_excluded_price','shipping_other','order_amount','payment1','payment2','payment_total','unpaid','actual_ship_date','ship_method','ship_address','ship_fee','quote_details','country','receiving_account','commission_rate','commission_amount','notes'],
         'commission_rates' => ['owner','rate','notes'],
         'exchange_rates' => ['code','rate','source'],
         'users' => ['username','pass_salt','pass_hash','is_admin'],
@@ -134,6 +134,27 @@ function ensureOwnerColumn() {
         }
     }
     if ($ok) @file_put_contents($flag, '1');
+    $done = true;
+}
+
+/* 自动为 orders 表补 shipping_other / total_amount 列（幂等，可重复执行） */
+function ensureOrdersColumns() {
+    static $done = false;
+    if ($done) return;
+    $flag = __DIR__ . '/.orders_cols_migrated';
+    if (is_file($flag)) { $done = true; return; }
+    $cols = [
+        'shipping_other' => "ALTER TABLE `orders` ADD COLUMN `shipping_other` DECIMAL(15,4) DEFAULT 0 AFTER `amount`",
+        'total_amount'   => "ALTER TABLE `orders` ADD COLUMN `total_amount` DECIMAL(15,4) DEFAULT 0 AFTER `shipping_other`",
+    ];
+    foreach ($cols as $sql) {
+        try {
+            db()->exec($sql);
+        } catch (PDOException $e) {
+            // 1060 = 字段已存在，视为成功；其它错误忽略，不阻塞请求
+        }
+    }
+    @file_put_contents($flag, '1');
     $done = true;
 }
 
@@ -622,6 +643,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     // 确保隔离所需的 owner 列存在（幂等，仅首次执行 ALTER）
     ensureOwnerColumn();
+    // 确保订单表补列（运费及其他 / 总计金额）
+    ensureOrdersColumns();
     // 确保业绩汇总/提成率/汇率缓存表存在（幂等）
     ensureTables();
     switch ($action) {

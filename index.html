@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.0';</script>
+<script>window.APP_VERSION='v5.1.1';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -215,6 +215,9 @@ a{color:var(--primary);text-decoration:none}
 .data-table .td-actions button:hover{background:var(--bg);color:var(--text)}
 .data-table .td-actions button.done-btn:hover{background:var(--success-light);color:var(--success);opacity:1}
 .data-table .td-actions button.delete:hover{background:var(--danger-light);color:var(--danger)}
+.data-table .td-actions button.perf-btn:hover{background:var(--primary-light);color:var(--primary)}
+.data-table a.link-order{color:var(--primary);text-decoration:none;font-weight:600;cursor:pointer}
+.data-table a.link-order:hover{text-decoration:underline}
 
 /* Checkbox Column */
 .data-table .col-check{width:40px;text-align:center;padding:8px!important}
@@ -955,7 +958,7 @@ a{color:var(--primary);text-decoration:none}
           <table class="data-table" id="table-orders">
             <thead><tr>
               <th class="col-check"><input type="checkbox" class="select-all-cb" data-table="orders"></th>
-              <th>订单号</th><th>客户名称</th><th>产品</th><th>金额</th><th>状态</th><th>下单日期</th><th>物流渠道</th><th>物流链接</th><th>发货时间</th><th>操作</th>
+              <th>订单号</th><th>客户名称</th><th>产品</th><th>税前金额</th><th>运费及其他</th><th>总计金额</th><th>状态</th><th>下单日期</th><th>物流渠道</th><th>物流链接</th><th>发货时间</th><th>操作</th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -1350,8 +1353,8 @@ var TABLE_DEFS={
   },
   orders:{
     name:'订单管理',icon:'i-cart',sbTable:'orders',
-    columns:['owner','order_no','customer_name','product','amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
-    labels:{owner:'归属',order_no:'订单号',customer_name:'客户名称',product:'产品',amount:'金额',currency:'货币',status:'状态',order_date:'下单日期',shipping_channel:'物流渠道',tracking_url:'物流链接',ship_date:'发货时间',notes:'备注'}
+    columns:['owner','order_no','customer_name','product','amount','shipping_other','total_amount','currency','status','order_date','shipping_channel','tracking_url','ship_date','notes'],
+    labels:{owner:'归属',order_no:'订单号',customer_name:'客户名称',product:'产品',amount:'税前金额',shipping_other:'运费及其他',total_amount:'总计金额',currency:'货币',status:'状态',order_date:'下单日期',shipping_channel:'物流渠道',tracking_url:'物流链接',ship_date:'发货时间',notes:'备注'}
   },
   todos:{
     name:'待办任务',icon:'i-check',sbTable:'todos',
@@ -1382,8 +1385,8 @@ var TABLE_DEFS={
   },
   performance:{
     name:'业绩汇总',icon:'i-trending',sbTable:'performance',private:true,
-    columns:['owner','month','customer_name','contact','order_no','product_model','product_name','estimated_ship_date','unit_price','currency','exchange_rate','cny_equivalent','tax_excluded_price','shipping_other','order_amount','payment1','payment2','payment_total','unpaid','actual_ship_date','ship_method','ship_address','ship_fee','quote_details','country','receiving_account','commission_rate','commission_amount','notes'],
-    labels:{owner:'归属',month:'月份',customer_name:'客户名称',contact:'联系方式',order_no:'订单编号',product_model:'产品型号',product_name:'产品名称',estimated_ship_date:'预计交货日期',unit_price:'单价',currency:'货币',exchange_rate:'汇率',cny_equivalent:'人民币金额',tax_excluded_price:'不含税价',shipping_other:'运费及其他',order_amount:'订单金额',payment1:'收款1',payment2:'收款2',payment_total:'收款合计',unpaid:'未付金',actual_ship_date:'实际出货日期',ship_method:'出货方式',ship_address:'收货地址',ship_fee:'出货运费',quote_details:'报价详情',country:'国家',receiving_account:'收款账号',commission_rate:'提成率',commission_amount:'提成金额',notes:'备注'}
+    columns:['owner','order_uid','month','customer_name','contact','order_no','product_model','product_name','estimated_ship_date','unit_price','currency','exchange_rate','cny_equivalent','tax_excluded_price','shipping_other','order_amount','payment1','payment2','payment_total','unpaid','actual_ship_date','ship_method','ship_address','ship_fee','quote_details','country','receiving_account','commission_rate','commission_amount','notes'],
+    labels:{owner:'归属',order_uid:'关联订单',month:'月份',customer_name:'客户名称',contact:'联系方式',order_no:'订单编号',product_model:'产品型号',product_name:'产品名称',estimated_ship_date:'预计交货日期',unit_price:'单价',currency:'货币',exchange_rate:'汇率',cny_equivalent:'人民币金额',tax_excluded_price:'不含税价',shipping_other:'运费及其他',order_amount:'订单金额',payment1:'收款1',payment2:'收款2',payment_total:'收款合计',unpaid:'未付金',actual_ship_date:'实际出货日期',ship_method:'出货方式',ship_address:'收货地址',ship_fee:'出货运费',quote_details:'报价详情',country:'国家',receiving_account:'收款账号',commission_rate:'提成率',commission_amount:'提成金额',notes:'备注'}
   }
 };
 
@@ -2225,12 +2228,14 @@ function renderTable(tableName){
         '<td>'+escapeHtml(r.customer_name||'-')+'</td>'+
         '<td>'+escapeHtml(r.product||'-')+'</td>'+
         '<td>'+formatMoney(r.amount,r.currency)+'</td>'+
+        '<td>'+formatMoney(r.shipping_other,r.currency)+'</td>'+
+        '<td><strong>'+formatMoney((Number(r.total_amount)||0)||((Number(r.amount||0)+Number(r.shipping_other||0))),r.currency)+'</strong></td>'+
         '<td>'+(r.status?'<span class="badge '+(STATUS_BADGE[r.status]||'badge-gray')+'">'+escapeHtml(r.status)+'</span>':'-')+'</td>'+
         '<td>'+formatDate(r.order_date)+'</td>'+
         '<td>'+(r.shipping_channel?'<span class="badge badge-blue">'+escapeHtml(r.shipping_channel)+'</span>':'-')+'</td>'+
         '<td>'+(r.tracking_url?'<a href="'+escapeHtml(r.tracking_url)+'" target="_blank" rel="noopener">查询</a>':'-')+'</td>'+
         '<td>'+formatDate(r.ship_date)+'</td>'+
-        '<td class="td-actions"><button class="edit-btn" data-table="orders" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-edit"/></svg></button><button class="delete delete-btn" data-table="orders" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-trash"/></svg></button></td>'+
+        '<td class="td-actions"><button class="perf-btn" data-ouid="'+r.uid+'" title="录入业绩"><svg class="icon-sm"><use href="#i-trending"/></svg></button><button class="edit-btn" data-table="orders" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-edit"/></svg></button><button class="delete delete-btn" data-table="orders" data-uid="'+r.uid+'"><svg class="icon-sm"><use href="#i-trash"/></svg></button></td>'+
       '</tr>';
     }).join('');
   }else if(tableName==='todos'){
@@ -2393,7 +2398,7 @@ function renderPerformance(){
       '<td>'+escapeHtml(r.month||'-')+'</td>'+
       '<td>'+escapeHtml(r.customer_name||'-')+'</td>'+
       '<td>'+escapeHtml(r.contact||'-')+'</td>'+
-      '<td>'+escapeHtml(r.order_no||'-')+'</td>'+
+      '<td>'+(r.order_no?'<a href="javascript:void(0)" class="link-order" onclick="jumpToOrder(\''+escapeHtml(r.order_uid||'')+'\',\''+escapeHtml(r.order_no||'')+'\')">'+escapeHtml(r.order_no)+'</a>':'-')+'</td>'+
       '<td>'+escapeHtml(r.product_model||'-')+'</td>'+
       '<td>'+escapeHtml(r.product_name||'-')+'</td>'+
       '<td>'+formatDate(r.estimated_ship_date)+'</td>'+
@@ -2527,14 +2532,19 @@ function openExchangeModal(){
   calc();
 }
 
-function openPerformanceModal(data){
+function openPerformanceModal(data, switchAfter){
   data=data||{};
   var isEdit=!!data.uid;
   var rec=Object.assign({},data);
   var rate=state.commissionRate&&state.commissionRate.rate!==undefined?state.commissionRate.rate:0;
   if(!rec.commission_rate&&rate)rec.commission_rate=rate;
+  // 关联订单下拉选项（仅本人可见自己的订单；管理员看全部）
+  var orderOptions=[{value:'',label:'（不关联）'}].concat((state.data.orders||[])
+    .filter(function(o){return state.isAdmin||!o.owner||o.owner===state.currentUser;})
+    .map(function(o){return {value:o.uid,label:(o.order_no||'未命名')+' · '+(o.customer_name||'')};}));
   var fields=[
     {sec:'订单下单信息'},
+    {key:'order_uid',label:'关联订单（选填，自动带入订单信息）',type:'select',options:orderOptions,value:rec.order_uid||''},
     {key:'month',label:'月份',type:'month',value:rec.month||todayStr().slice(0,7)},
     {key:'customer_name',label:'客户名称',type:'text',value:rec.customer_name||''},
     {key:'contact',label:'联系方式',type:'text',value:rec.contact||''},
@@ -2579,7 +2589,11 @@ function openPerformanceModal(data){
       '<label class="form-label">'+f.label+'</label>';
     if(f.type==='select'){
       html+='<select class="form-select" name="'+f.key+'"'+(f.readonly?' disabled':'')+'>';
-      f.options.forEach(function(o){html+='<option value="'+o+'"'+(f.value===o?' selected':'')+'>'+o+'</option>';});
+      f.options.forEach(function(o){
+        var oVal=(typeof o==='object'&&o)?o.value:o;
+        var oLabel=(typeof o==='object'&&o)?o.label:o;
+        html+='<option value="'+escapeHtml(oVal)+'"'+(String(f.value)===String(oVal)?' selected':'')+'>'+escapeHtml(oLabel)+'</option>';
+      });
       html+='</select>';
     }else if(f.type==='textarea'){
       html+='<textarea class="form-textarea" name="'+f.key+'"'+(f.readonly?' readonly':'')+'>'+escapeHtml(String(f.value||''))+'</textarea>';
@@ -2613,6 +2627,22 @@ function openPerformanceModal(data){
   }
   fields.forEach(function(f){if(f.sec)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)el.addEventListener('input',recalc);});
 
+  // 关联订单：选择后自动带入订单信息（税前金额 + 运费及其他）
+  function applyOrderLink(uid){
+    var o=(state.data.orders||[]).find(function(x){return x.uid===uid;});
+    if(!o)return;
+    var set=function(key,val){var el=form.querySelector('[name="'+key+'"]'); if(el)el.value=val;};
+    set('order_no',o.order_no||'');
+    set('customer_name',o.customer_name||'');
+    set('product_name',o.product||'');
+    set('currency',o.currency||'USD');
+    set('order_amount',Number(o.amount||0));
+    set('shipping_other',Number(o.shipping_other||0));
+    recalc();
+  }
+  var linkSel=form.querySelector('[name="order_uid"]');
+  if(linkSel)linkSel.addEventListener('change',function(){applyOrderLink(linkSel.value);});
+
   // auto fetch rate when currency USD
   if((rec.currency||'USD')==='USD'){
     fetchExchangeRate('USD','CNY').then(function(info){
@@ -2631,7 +2661,35 @@ function openPerformanceModal(data){
     else{addRecord('performance',record); toast('业绩已录入','success');}
     document.getElementById('modal-performance').remove();
     renderPerformance();
+    if(switchAfter)switchView('performance');
   };
+}
+
+/* 从订单录入业绩：带入订单信息并跳转业绩页 */
+function openPerformanceFromOrder(uid){
+  var o=(state.data.orders||[]).find(function(x){return x.uid===uid;});
+  if(!o){toast('订单不存在','warning');return;}
+  var perfData={
+    order_uid:o.uid,
+    order_no:o.order_no||'',
+    customer_name:o.customer_name||'',
+    product_name:o.product||'',
+    currency:o.currency||'USD',
+    order_amount:Number(o.amount||0),
+    shipping_other:Number(o.shipping_other||0),
+    owner:o.owner||state.currentUser||''
+  };
+  openPerformanceModal(perfData, true);
+}
+
+/* 业绩表点击订单编号：跳转到对应订单 */
+function jumpToOrder(uid, ono){
+  state.search.orders=ono||'';
+  var inp=document.getElementById('search-orders');
+  if(inp)inp.value=ono||'';
+  switchView('orders');
+  // switchView 会触发 renderTable('orders')，这里确保过滤生效
+  if(state.currentView==='orders'){renderTable('orders');}
 }
 
 /* ========== Samples: 车手档案 + 多次寄样记录 ========== */
@@ -4321,9 +4379,11 @@ function openRecordModal(table,data){
         if(f.row)html='<div class="form-row">';
         html+='<label class="form-label">'+f.label+(f.required?' <span class="required">*</span>':'')+'</label>';
         if(f.type==='select'){
-          html+='<select class="form-select" name="'+f.key+'">';
+          html+='<select class="form-select" name="'+f.key+'"'+(f.readonly?' disabled':'')+'>';
           f.options.forEach(function(opt){
-            html+='<option value="'+opt+'"'+(val===opt?' selected':'')+'>'+opt+'</option>';
+            var oVal = (typeof opt==='object'&&opt)?opt.value:opt;
+            var oLabel = (typeof opt==='object'&&opt)?opt.label:opt;
+            html+='<option value="'+escapeHtml(oVal)+'"'+(String(val)===String(oVal)?' selected':'')+'>'+escapeHtml(oLabel)+'</option>';
           });
           html+='</select>';
         }else if(f.type==='checkbox'){
@@ -4344,7 +4404,7 @@ function openRecordModal(table,data){
           (val?'<button type="button" class="btn btn-outline btn-sm" style="margin-top:8px" id="img-remove-'+fkey+'">移除图片</button>':'')+
           '<input type="hidden" name="'+fkey+'_data" value="'+escapeHtml(val)+'">';
         }else{
-          html+='<input class="form-input" type="'+(f.type||'text')+'" name="'+f.key+'" value="'+escapeHtml(val)+'" placeholder="'+(f.placeholder||'')+'">';
+          html+='<input class="form-input" type="'+(f.type||'text')+'" name="'+f.key+'" value="'+escapeHtml(val)+'" placeholder="'+(f.placeholder||'')+'"'+(f.readonly?' readonly':'')+'>';
         }
         if(f.hint)html+='<div class="form-hint">'+f.hint+'</div>';
         html+='</div>';
@@ -4399,7 +4459,21 @@ function openRecordModal(table,data){
     var removeBtn=document.getElementById('img-remove-'+f.key);
     if(removeBtn)removeBtn.onclick=resetArea;
   });
-  
+
+  // 订单：总计金额 = 税前金额 + 运费及其他（自动计算，不可手填）
+  if(table==='orders'){
+    var f2=document.querySelector('#modal-record .modal-body');
+    if(f2){
+      var amtEl=f2.querySelector('[name="amount"]');
+      var shpEl=f2.querySelector('[name="shipping_other"]');
+      var totEl=f2.querySelector('[name="total_amount"]');
+      var updTot=function(){var a=Number(amtEl?amtEl.value:0)||0;var s=Number(shpEl?shpEl.value:0)||0;if(totEl)totEl.value=(a+s).toFixed(2);};
+      if(amtEl)amtEl.addEventListener('input',updTot);
+      if(shpEl)shpEl.addEventListener('input',updTot);
+      updTot();
+    }
+  }
+
   // Save handler
   document.getElementById('modal-save').onclick=async function(){
     var form=document.querySelector('#modal-record .modal-body');
@@ -4496,7 +4570,9 @@ function getFormFields(table){
       {key:'order_no',label:'订单号',required:true,type:'text',placeholder:'如 PO-2026-0801'},
       {key:'customer_name',label:'客户名称',type:'text',placeholder:'如 ABC Trading'},
       {key:'product',label:'产品',type:'text',placeholder:'如 USB数据线 x5000'},
-      {key:'amount',label:'金额',type:'number',placeholder:'0',default:0},
+      {key:'amount',label:'税前金额',type:'number',placeholder:'0',default:0},
+      {key:'shipping_other',label:'运费及其他',type:'number',placeholder:'0',default:0},
+      {key:'total_amount',label:'总计金额（自动计算）',type:'number',placeholder:'0',default:0,readonly:true},
       {key:'currency',label:'货币',type:'select',options:['USD','CNY','EUR'],default:'USD'},
       {key:'status',label:'状态',type:'select',options:STATUS_OPTIONS.orders,default:'待处理'},
       {key:'order_date',label:'下单日期',type:'date',default:todayStr()},
@@ -5330,6 +5406,13 @@ function setupEvents(){
         renderDashboard();
         toast(wasDone?'已恢复为待办':'已完成任务 🎉','success');
       }
+      return;
+    }
+
+    // 订单「录业绩」按钮：从订单带入信息打开业绩录入
+    var perfBtn=e.target.closest('.perf-btn');
+    if(perfBtn){
+      openPerformanceFromOrder(perfBtn.dataset.ouid);
       return;
     }
 
