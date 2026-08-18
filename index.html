@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.5';</script>
+<script>window.APP_VERSION='v5.1.6';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1942,57 +1942,44 @@ function logActivity(action,module,description){
 
 /* ========== Sample Data ========== */
 function loadSampleData(){
-  state.data.customers=[
-    {uid:uid(),company_name:'ABC Trading',contact_person:'John Smith',phone:'+1-310-555-0142',email:'john@abctrading.com',country:'美国',source:'推荐',status:'待跟进',notes:'由 Pacific Distributors 推荐',created_at:new Date(Date.now()-86400000*2).toISOString()},
-    {uid:uid(),company_name:'Pacific Distributors',contact_person:'Sarah Lee',phone:'+1-604-555-0198',email:'sarah@pacdist.com',country:'加拿大',source:'网站',status:'跟进中',notes:'对蓝牙音箱感兴趣',created_at:new Date(Date.now()-86400000*5).toISOString()},
-    {uid:uid(),company_name:'Global Import',contact_person:'Mike Chen',phone:'+61-2-5550-1234',email:'mike@globalimport.com.au',country:'澳大利亚',source:'展会',status:'已成交',notes:'蓝牙音箱大单客户',created_at:new Date(Date.now()-86400000*10).toISOString()},
-    {uid:uid(),company_name:'Sunrise Traders',contact_person:'Emma Wilson',phone:'+44-20-7946-0958',email:'emma@sunrise.co.uk',country:'英国',source:'社媒',status:'已成交',notes:'USB数据线常规客户',created_at:new Date(Date.now()-86400000*8).toISOString()},
-    {uid:uid(),company_name:'Oceanlink',contact_person:'David Park',phone:'+82-2-555-0123',email:'david@oceanlink.kr',country:'韩国',source:'展会',status:'待跟进',notes:'LED灯具询盘',created_at:new Date(Date.now()-86400000*3).toISOString()}
-  ];
-  state.data.orders=[
-    {uid:uid(),order_no:'PO-2026-0715',customer_name:'Sunrise Traders',product:'USB 数据线 x5000',amount:3500,currency:'USD',status:'已发货',order_date:daysFromNow(-15),notes:'已发货，预计8月20日到达',created_at:new Date(Date.now()-86400000*15).toISOString()},
-    {uid:uid(),order_no:'PO-2026-0610',customer_name:'Global Import',product:'蓝牙音箱 x800',amount:8200,currency:'USD',status:'已完成',order_date:daysFromNow(-30),notes:'已完成收款',created_at:new Date(Date.now()-86400000*30).toISOString()},
-    {uid:uid(),order_no:'PO-2026-0801',customer_name:'ABC Trading',product:'样品确认包',amount:500,currency:'USD',status:'待处理',order_date:daysFromNow(-2),notes:'等待样品确认后安排正式订单',created_at:new Date(Date.now()-86400000*2).toISOString()},
-    {uid:uid(),order_no:'PO-2026-0728',customer_name:'Pacific Distributors',product:'无线充电器 x2000',amount:5800,currency:'USD',status:'生产中',order_date:daysFromNow(-8),notes:'预计8月25日出货',created_at:new Date(Date.now()-86400000*8).toISOString()},
-    {uid:uid(),order_no:'PO-2026-0805',customer_name:'Oceanlink',product:'LED灯具 x3000',amount:6300,currency:'USD',status:'待处理',order_date:daysFromNow(-1),notes:'等待付款确认',created_at:new Date(Date.now()-86400000).toISOString()}
-  ];
-  state.data.todos=[
-    {uid:uid(),title:'跟进 ABC Trading 样品确认',related_customer:'ABC Trading',priority:'P0',due_date:yesterdayStr(),status:'待办',notes:'客户已收到样品，等待确认反馈',created_at:new Date(Date.now()-86400000*3).toISOString()},
-    {uid:uid(),title:'发送 Oceanlink 开发信',related_customer:'Oceanlink',priority:'P1',due_date:todayStr(),status:'待办',notes:'介绍LED灯具产品线',created_at:new Date(Date.now()-86400000).toISOString()},
-    {uid:uid(),title:'准备 Pacific Distributors 报价单',related_customer:'Pacific Distributors',priority:'P1',due_date:tomorrowStr(),status:'待办',notes:'无线充电器批量报价',created_at:new Date().toISOString()},
-    {uid:uid(),title:'跟进 Sunrise Traders 付款',related_customer:'Sunrise Traders',priority:'P2',due_date:daysFromNow(3),status:'待办',notes:'PO-2026-0715 尾款',created_at:new Date().toISOString()},
-    {uid:uid(),title:'整理本月客户报表',related_customer:'',priority:'P1',due_date:daysFromNow(5),status:'待办',notes:'月度复盘',created_at:new Date().toISOString()}
-  ];
-  state.data.samples=[];
-  state.data.shipments=[];
-  state.data.letters=[
-    {uid:uid(),title:'首次开发信 - 电子产品',subject:'Premium Electronics Products for Your Business',tags:'电子产品,首次联系,英文',content:'Dear [Name],\n\nI hope this email finds you well. My name is [Your Name] from [Company], a leading manufacturer of electronic products based in China.\n\nWe specialize in Bluetooth speakers, USB cables, LED lighting, and wireless chargers. Our products have been exported to over 30 countries with excellent quality and competitive pricing.\n\nI would love to introduce our latest product catalog and discuss potential cooperation opportunities. Would you be interested in receiving our product samples?\n\nLooking forward to your reply.\n\nBest regards,\n[Your Name]\n[Company]\n[Phone] | [Email]',created_at:new Date(Date.now()-86400000*7).toISOString()},
-    {uid:uid(),title:'跟进开发信 - 样品确认',subject:'Following up on Sample Delivery',tags:'跟进,样品,英文',content:'Dear [Name],\n\nI hope you have received the samples we sent on [Date]. I wanted to follow up to see if you have had a chance to evaluate them.\n\nWe are confident in the quality of our products and would be happy to discuss any adjustments or customizations you may need. Our MOQ is flexible and we offer OEM/ODM services.\n\nPlease let me know your thoughts or if you need any additional information.\n\nBest regards,\n[Your Name]',created_at:new Date(Date.now()-86400000*3).toISOString()}
-  ];
-  state.data.socials=[
-    {uid:uid(),title:'LinkedIn产品推广',platform:'LinkedIn',tags:'推广,新品,英文',content:'Exciting news! Our latest Bluetooth Speaker Pro is now available for bulk orders. Featuring 20-hour battery life, IPX7 waterproof rating, and premium sound quality at unbeatable prices. Perfect for retailers and distributors. Contact us for a quote today! #Electronics #BluetoothSpeaker #B2B',created_at:new Date(Date.now()-86400000*4).toISOString()},
-    {uid:uid(),title:'Facebook新品发布',platform:'Facebook',tags:'新品,发布,中英',content:'新品上架！我们的 USB-C 快充数据线系列现已接受批量订购。支持 100W 快充，耐用性测试超过 10000 次弯折。OEM/ODM 定制欢迎咨询！New product launch: USB-C fast charging cables now available for bulk orders. OEM/ODM welcome!',created_at:new Date(Date.now()-86400000*2).toISOString()}
-  ];
-  state.data.devimages=[
-    {uid:uid(),title:'蓝牙音箱产品图',description:'产品正面图，可用于开发信和社媒推广',image:'',created_at:new Date(Date.now()-86400000*5).toISOString()},
-    {uid:uid(),title:'USB数据线细节图',description:'接口特写，展示产品质量',image:'',created_at:new Date(Date.now()-86400000*3).toISOString()}
-  ];
-  // Save all
-  Object.keys(state.data).forEach(function(k){
-    saveData(KEYS[k],state.data[k]);
-  });
-  // Sample activities
-  state.activities=[
-    {ts:Date.now()-3600000*3,action:'complete',module:'待办任务',desc:'完成 Oceanlink 开发信发送'},
-    {ts:Date.now()-3600000*24*3,action:'update',module:'订单管理',desc:'订单 PO-2026-0715 已发货'},
-    {ts:Date.now()-3600000*24*6,action:'update',module:'客户管理',desc:'跟进 ABC Trading 样品确认'},
-    {ts:Date.now()-3600000*24*10,action:'add',module:'客户管理',desc:'新增客户 Pacific Distributors'},
-    {ts:Date.now()-3600000*24*11,action:'complete',module:'订单管理',desc:'订单 PO-2026-0610 已完成'}
-  ];
-  saveData(KEYS.activity,state.activities);
+  // v5.1.6 起彻底禁用示例数据：不再自动创建任何演示记录
   saveData(KEYS.sampleFlag,'1');
 }
 
+
+
+/* ========== v5.1.6 一次性清理历史遗留演示数据 ========== */
+function purgeDemoData(username){
+  var flagKey='ftw_demo_purged_v516_'+(username||'');
+  if(localStorage.getItem(flagKey))return;
+  var demoCustomers=['ABC Trading','Pacific Distributors','Global Import','Sunrise Traders','Oceanlink'];
+  var demoOrders=['PO-2026-0715','PO-2026-0610','PO-2026-0801','PO-2026-0728','PO-2026-0805'];
+  var demoTodos=['跟进 ABC Trading 样品确认','发送 Oceanlink 开发信','准备 Pacific Distributors 报价单','跟进 Sunrise Traders 付款','整理本月客户报表'];
+  var demoLetters=['首次开发信 - 电子产品','跟进开发信 - 样品确认'];
+  var demoSocials=['LinkedIn产品推广','Facebook新品发布'];
+  var demoDevimages=['蓝牙音箱产品图','USB数据线细节图'];
+  function collect(table,field,names){
+    var out=[];
+    (state.data[table]||[]).forEach(function(r){ if(names.indexOf(r[field])>-1)out.push(r.uid); });
+    return out;
+  }
+  var tasks=[];
+  collect('customers','company_name',demoCustomers).forEach(function(u){tasks.push(['customers',u]);});
+  collect('orders','order_no',demoOrders).forEach(function(u){tasks.push(['orders',u]);});
+  collect('todos','title',demoTodos).forEach(function(u){tasks.push(['todos',u]);});
+  collect('letters','title',demoLetters).forEach(function(u){tasks.push(['letters',u]);});
+  collect('socials','title',demoSocials).forEach(function(u){tasks.push(['socials',u]);});
+  collect('devimages','title',demoDevimages).forEach(function(u){tasks.push(['devimages',u]);});
+  tasks.forEach(function(p){ try{ deleteRecord(p[0],p[1]); }catch(e){} });
+  // 活动记录仅本地，直接过滤
+  if(state.activities&&state.activities.length){
+    var demoActs=['Oceanlink 开发信发送','PO-2026-0715 已发货','ABC Trading 样品确认','新增客户 Pacific Distributors','PO-2026-0610 已完成'];
+    var before=state.activities.length;
+    state.activities=state.activities.filter(function(a){return demoActs.indexOf(a.desc)<0;});
+    if(state.activities.length!==before){saveData(KEYS.activity,state.activities);}
+  }
+  localStorage.setItem(flagKey,'1');
+}
 /* ========== UI: Navigation ========== */
 function switchView(view){
   state.currentView=view;
@@ -6153,11 +6140,20 @@ async function enterApp(username){
   renderOutreach();
 
   // 自动拉取（中央表与自有表按各自配置同步）
-  Object.keys(TABLE_DEFS).concat(Object.keys(OUTREACH_DEFS)).forEach(function(t){
+  var _mergePromises=Object.keys(TABLE_DEFS).concat(Object.keys(OUTREACH_DEFS)).map(function(t){
     var def=TABLE_DEFS[t]||OUTREACH_DEFS[t];
-    if(def.sbTable&&tableSyncReady(t))sbMergeTable(t).catch(function(e){});
+    if(def.sbTable&&tableSyncReady(t))return sbMergeTable(t).catch(function(e){});
+    return Promise.resolve();
   });
+  function _withTimeout(p,ms){return Promise.race([p,new Promise(function(r){setTimeout(r,ms);})]);}
+  await Promise.all(_mergePromises.map(function(p){return _withTimeout(p,8000);}));
   startAutoSyncPolling();
+  // v5.1.6：一次性清理历史遗留演示数据（禁用示例后，仅清理已存在的演示记录，含云端）
+  purgeDemoData(username);
+  ['customers','orders','todos','letters','socials','devimages'].forEach(function(k){
+    var def=TABLE_DEFS[k]; if(def&&!def.hidden)renderModule(k);
+  });
+  renderOutreach();
 }
 
 /* ========== Init ========== */
