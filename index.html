@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.3';</script>
+<script>window.APP_VERSION='v5.1.4';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1792,8 +1792,8 @@ async function sbMergeTable(tableName, opts){
     });
     state.data[tableName]=merged;
     saveData(KEYS[tableName],merged);
-    // 订单合并后同步其待办（云端同步进来的开放订单也要进待办列表）
-    if(tableName==='orders')syncOrderTodos(true);
+    // 订单合并后同步其待办（云端同步进来的开放订单也要进待办列表）；弹窗打开期间不打扰
+    if(tableName==='orders'&&!opts.skipRender)syncOrderTodos(true);
     // 有弹窗打开时（skipRender），自动同步只静默更新本地数据，不重绘任何视图，
     // 避免后台刷新抢走弹窗焦点 / 导致误触背景关闭弹窗、丢失已录入内容
     if(!opts.skipRender){
@@ -2550,10 +2550,13 @@ function openPerformanceModal(data, switchAfter){
   var rec=Object.assign({},data);
   var rate=state.commissionRate&&state.commissionRate.rate!==undefined?state.commissionRate.rate:0;
   if(!rec.commission_rate&&rate)rec.commission_rate=rate;
-  // 草稿恢复：若上次录入业绩弹窗意外关闭，重新打开时自动恢复已填内容
-  if(!isEdit&&window.__perfDraft){
-    Object.keys(window.__perfDraft).forEach(function(k){
-      if(window.__perfDraft[k]!==undefined&&window.__perfDraft[k]!=='')rec[k]=window.__perfDraft[k];
+  // 草稿恢复：弹窗意外关闭/页面刷新后重新打开时，从内存或 localStorage 恢复已填内容
+  var perfDraft=window.__perfDraft;
+  if(!perfDraft){try{perfDraft=JSON.parse(localStorage.getItem('ftw_perf_draft')||'null');}catch(e){perfDraft=null;}}
+  var restoredDraft=false;
+  if(!isEdit&&perfDraft){
+    Object.keys(perfDraft).forEach(function(k){
+      if(perfDraft[k]!==undefined&&perfDraft[k]!==''){rec[k]=perfDraft[k];restoredDraft=true;}
     });
   }
   // 关联订单下拉选项（仅本人可见自己的订单；管理员看全部）
@@ -2599,7 +2602,7 @@ function openPerformanceModal(data, switchAfter){
 
   var html='<div class="modal-overlay show" id="modal-performance">'+
     '<div class="modal" style="max-width:780px;max-height:90vh;overflow-y:auto">'+
-      '<div class="modal-header"><span class="modal-title">'+(isEdit?'编辑':'录入')+'业绩</span><button class="modal-close" onclick="window.__perfDraft=null;document.getElementById(\'modal-performance\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
+      '<div class="modal-header"><span class="modal-title">'+(isEdit?'编辑':'录入')+'业绩</span><button class="modal-close" onclick="window.__perfDraft=null;try{localStorage.removeItem(\'ftw_perf_draft\');}catch(e){};document.getElementById(\'modal-performance\').remove()"><svg class="icon"><use href="#i-close"/></svg></button></div>'+
       '<div class="modal-body perf-form-grid">';
   fields.forEach(function(f){
     if(f.sec){html+='<div class="perf-section-title full">'+f.sec+'</div>';return;}
@@ -2621,10 +2624,11 @@ function openPerformanceModal(data, switchAfter){
     html+='</div>';
   });
   html+='</div>'+
-      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="window.__perfDraft=null;document.getElementById(\'modal-performance\').remove()">取消</button><button class="btn btn-primary btn-sm" id="perf-save">保存</button></div>'+
+      '<div class="modal-footer"><button class="btn btn-outline btn-sm" onclick="window.__perfDraft=null;try{localStorage.removeItem(\'ftw_perf_draft\');}catch(e){};document.getElementById(\'modal-performance\').remove()">取消</button><button class="btn btn-primary btn-sm" id="perf-save">保存</button></div>'+
     '</div>'+
   '</div>';
   document.getElementById('modal-container').insertAdjacentHTML('beforeend',html);
+  if(restoredDraft)toast('已自动恢复上次未保存的草稿','info');
 
   var form=document.querySelector('#modal-performance .modal-body');
   function recalc(){
@@ -2650,6 +2654,7 @@ function openPerformanceModal(data, switchAfter){
     var d={};
     fields.forEach(function(f){if(f.sec||f.readonly)return; var el=form.querySelector('[name="'+f.key+'"]'); if(el)d[f.key]=el.value;});
     window.__perfDraft=d;
+    try{localStorage.setItem('ftw_perf_draft',JSON.stringify(d));}catch(e){}
   }
   form.addEventListener('input',capturePerfDraft);
   form.addEventListener('change',capturePerfDraft);
@@ -2687,6 +2692,7 @@ function openPerformanceModal(data, switchAfter){
     if(isEdit){updateRecord('performance',data.uid,record); toast('业绩已更新','success');}
     else{addRecord('performance',record); toast('业绩已录入','success');}
     window.__perfDraft=null;
+    try{localStorage.removeItem('ftw_perf_draft');}catch(e){}
     document.getElementById('modal-performance').remove();
     renderPerformance();
     if(switchAfter)switchView('performance');
@@ -5754,11 +5760,17 @@ function setupEvents(){
     });
   });
 
-  // Close modal on overlay click
+  // Close modal on overlay click —— 仅当"按下"和"抬起"都落在背景遮罩上才关闭，
+  // 避免误触、拖拽、滚动或焦点跳动导致的弹窗意外关闭
+  var overlayMouseDown=false;
+  document.addEventListener('mousedown',function(e){
+    overlayMouseDown=!!(e.target.classList&&e.target.classList.contains('modal-overlay'));
+  });
   document.addEventListener('click',function(e){
-    if(e.target.classList&&e.target.classList.contains('modal-overlay')){
+    if(overlayMouseDown&&e.target.classList&&e.target.classList.contains('modal-overlay')){
       e.target.remove();
     }
+    overlayMouseDown=false;
   });
 
   // Batch delete & cancel buttons
