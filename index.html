@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>外贸业务工作台</title>
-<script>window.APP_VERSION='v5.1.6';</script>
+<script>window.APP_VERSION='v5.1.7';</script>
 <style>
 /* ========== Reset & Base ========== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -2228,6 +2228,7 @@ function renderTable(tableName){
       var ck=sel.indexOf(r.uid)>-1;
       return '<tr'+(ck?' class="selected"':'')+'>'+
         '<td class="col-check"><input type="checkbox" class="row-cb" data-table="todos" data-uid="'+r.uid+'"'+(ck?' checked':'')+'></td>'+
+        '<td>'+escapeHtml(r.title||'-')+'</td>'+
         '<td>'+escapeHtml(r.related_customer||'-')+'</td>'+
         '<td><span class="priority-'+(r.priority||'P2')+'">'+(r.priority||'P2')+'</span></td>'+
         '<td>'+(overdue?'<span style="color:var(--danger);font-weight:600">'+formatDate(r.due_date)+' (逾期)</span>':formatDate(r.due_date))+'</td>'+
@@ -3215,54 +3216,72 @@ function updateShipment(uid,rec){
   }
   toast('寄样记录已更新','success');
 }
-/* 寄样未反馈/未发货 → 自动创建跟进待办（同车手+寄样记录每种只建一条，已存在则跳过） */
+/* 寄样未反馈/未发货 → 自动创建跟进待办（按 ship.uid 幂等：先清理旧待办再重建） */
 function autoCreateFollowupTodo(ship,silent){
   var sample=getSampleById(ship.sample_id);
   var sampleName=(sample&&sample.name)||'';
-  // 1) 反馈未反馈 → 跟进反馈待办
+  var p=function(n){return n<10?'0'+n:n;};
+  var todos=state.data.todos||[];
+  var shipTag='寄样记录：'+ship.uid;
+  // 1) 移除同一 ship 已生成的任何样品待办，确保不会重复
+  var cleaned=todos.filter(function(t){return !(t.notes&&t.notes.indexOf(shipTag)>-1);});
+  var removed=todos.length-cleaned.length;
+  var created=0;
+  // 2) 反馈未反馈 → 跟进反馈待办
   if((ship.feedback_status||'未反馈')!=='已反馈'){
-    var fbTitle='跟进车手 '+sampleName+' 的样品反馈';
     var fbDue=ship.ship_date||todayStr();
     var d1=new Date(fbDue+'T00:00:00');d1.setDate(d1.getDate()+7);
-    var p1=function(n){return n<10?'0'+n:n;};
-    var fbDueStr=d1.getFullYear()+'-'+p1(d1.getMonth()+1)+'-'+p1(d1.getDate());
-    var fbExists=(state.data.todos||[]).some(function(t){return t.title===fbTitle&&t.notes&&t.notes.indexOf(ship.uid)>-1;});
-    if(!fbExists){
-      state.data.todos.unshift({uid:uid(),title:fbTitle,related_customer:sampleName,priority:'P1',due_date:fbDueStr,status:'待办',notes:'寄样记录：'+ship.uid+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
-      saveData(KEYS.todos,state.data.todos);
-      logActivity('add','待办任务','自动创建跟进待办：'+fbTitle);
-      if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
-      if(!silent)toast('已自动创建跟进待办：'+fbTitle,'info');
-    }
+    var fbDueStr=d1.getFullYear()+'-'+p(d1.getMonth()+1)+'-'+p(d1.getDate());
+    var fbTitle='跟进车手 '+sampleName+' 的样品反馈';
+    cleaned.unshift({uid:uid(),title:fbTitle,related_customer:sampleName,priority:'P1',due_date:fbDueStr,status:'待办',notes:shipTag+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
+    created++;
+    if(!silent)logActivity('add','待办任务','自动创建跟进待办：'+fbTitle);
   }
-  // 2) 未发货 → 跟进发货待办
+  // 3) 未发货 → 跟进发货待办
   if((ship.ship_status||'未寄出')!=='已寄出'){
-    var shTitle='跟进车手 '+sampleName+' 的样品发货';
     var shDue=ship.ship_date||todayStr();
     var d2=new Date(shDue+'T00:00:00');
-    var p2=function(n){return n<10?'0'+n:n;};
-    var shDueStr=d2.getFullYear()+'-'+p2(d2.getMonth()+1)+'-'+p2(d2.getDate());
-    var shExists=(state.data.todos||[]).some(function(t){return t.title===shTitle&&t.notes&&t.notes.indexOf(ship.uid)>-1;});
-    if(!shExists){
-      state.data.todos.unshift({uid:uid(),title:shTitle,related_customer:sampleName,priority:'P2',due_date:shDueStr,status:'待办',notes:'寄样记录：'+ship.uid+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
-      saveData(KEYS.todos,state.data.todos);
-      logActivity('add','待办任务','自动创建发货跟进待办：'+shTitle);
-      if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
-      if(!silent)toast('已自动创建发货跟进待办：'+shTitle,'info');
-    }
+    var shDueStr=d2.getFullYear()+'-'+p(d2.getMonth()+1)+'-'+p(d2.getDate());
+    var shTitle='跟进车手 '+sampleName+' 的样品发货';
+    cleaned.unshift({uid:uid(),title:shTitle,related_customer:sampleName,priority:'P2',due_date:shDueStr,status:'待办',notes:shipTag+'（'+sampleName+' · '+(shipmentProductLabel(ship)||'')+'）',created_at:new Date().toISOString()});
+    created++;
+    if(!silent)logActivity('add','待办任务','自动创建发货跟进待办：'+shTitle);
+  }
+  if(removed||created){
+    state.data.todos=cleaned;
+    saveData(KEYS.todos,state.data.todos);
+    if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+    if(!silent){renderTable('todos');updateBadges();}
   }
 }
 /* 一键为现有寄样补生成未跟进待办（未反馈 / 未发货） */
 function backfillSampleFollowupTodos(){
   var ships=state.data.shipments||[];
-  var before=(state.data.todos||[]).length;
+  var todos=state.data.todos||[];
+  var before=todos.length;
+  var shipUidMap={};
+  ships.forEach(function(sh){shipUidMap[sh.uid]=true;});
+  // 1) 先移除所有由现有寄样记录生成的旧待办，确保幂等重建
+  var cleaned=todos.filter(function(t){
+    var m=t.notes&&t.notes.match(/寄样记录：([a-zA-Z0-9_-]+)/);
+    return !(m&&shipUidMap[m[1]]);
+  });
+  state.data.todos=cleaned;
+  // 2) 按当前状态重新生成
   ships.forEach(function(sh){autoCreateFollowupTodo(sh,true);});
-  var created=(state.data.todos||[]).length-before;
+  var created=state.data.todos.length-cleaned.length;
+  if(created||(state.data.todos.length!==before)){
+    saveData(KEYS.todos,state.data.todos);
+    if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+  }
   renderTable('todos');
+  updateBadges();
   toast(created>0?('已生成 '+created+' 条未跟进待办'):'没有需要生成的待办（均已跟进）','success');
+  // 同时刷新订单待办（去重 + 补齐）
+  syncOrderTodos(true);
 }
 /* 订单同步到待办：状态为「待处理」「生产中」的订单 → 自动建待办；
-   订单状态变化/删除后，对应的订单待办自动清理（按备注里的订单 uid 标记识别） */
+   已结束的订单待办自动清理，并按订单 uid 去重（每个开放订单只保留一条待办） */
 function syncOrderTodos(silent){
   if(!state.data.orders)return;
   var orders=state.data.orders;
@@ -3272,30 +3291,31 @@ function syncOrderTodos(silent){
   orders.forEach(function(o){
     if(o.status==='待处理'||o.status==='生产中')openMap[o.uid]=o;
   });
-  // 2) 清理：订单待办（备注带【订单待办:UID】）若对应订单已不在开放状态 → 移除
+  // 2) 清理并去重：只保留每个开放订单最新的一条订单待办
   var kept=[];
+  var seenOrderUids={};
   var removed=0;
   todos.forEach(function(t){
     var m=t.notes&&t.notes.match(/【订单待办:([^】]+)】/);
     if(m){
-      if(openMap[m[1]]){kept.push(t);}       // 订单仍开放 → 保留
-      else{removed++;}                        // 订单已无/已变化 → 删除该待办
+      var orderUid=m[1];
+      if(openMap[orderUid]&&!seenOrderUids[orderUid]){
+        kept.push(t);
+        seenOrderUids[orderUid]=true;
+      }else{
+        removed++;
+      }
     }else{
       kept.push(t);                           // 非订单待办（手动/寄样）→ 不动
     }
   });
-  // 3) 已存在订单待办的，标记 openMap 以免重复创建
-  kept.forEach(function(t){
-    var m=t.notes&&t.notes.match(/【订单待办:([^】]+)】/);
-    if(m)openMap[m[1]]=null;
-  });
-  // 4) 为尚无待办的开放订单创建待办
+  // 3) 为尚无待办的开放订单创建待办
   var created=0;
   orders.forEach(function(o){
-    if((o.status==='待处理'||o.status==='生产中')&&openMap[o.uid]){
+    if((o.status==='待处理'||o.status==='生产中')&&!seenOrderUids[o.uid]){
       kept.unshift({
         uid:uid(),
-        title:(o.status==='待处理'?'订单待处理':'订单生产中')+'：'+(o.order_no||'')+' · '+(o.customer_name||''),
+        title:(o.status==='待处理'?'订单待处理':'订单生产中')+'：'+(o.order_no||o.uid)+' · '+(o.customer_name||'未命名客户'),
         related_customer:o.customer_name||'',
         priority:o.status==='待处理'?'P1':'P2',
         due_date:o.order_date||todayStr(),
@@ -3304,7 +3324,7 @@ function syncOrderTodos(silent){
         created_at:new Date().toISOString()
       });
       created++;
-      openMap[o.uid]=null;
+      seenOrderUids[o.uid]=true;
     }
   });
   if(removed||created){
@@ -3313,7 +3333,7 @@ function syncOrderTodos(silent){
     renderTable('todos');
     updateBadges();
     if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
-    if(!silent)toast((created?('已同步 '+created+' 条订单待办'):'')+(removed?('，清理 '+removed+' 条已结束订单待办'):''),'info');
+    if(!silent)toast((created?('已同步 '+created+' 条订单待办'):'')+(removed?('，清理 '+removed+' 条已结束/重复订单待办'):''),'info');
   }
 }
 /* 删除寄样记录（同步联动删除云端） */
