@@ -3227,6 +3227,16 @@ function autoCreateFollowupTodo(ship,silent){
   var cleaned=todos.filter(function(t){return !(t.notes&&t.notes.indexOf(shipTag)>-1);});
   var removed=todos.length-cleaned.length;
   var created=0;
+  /* 车手档案不存在或姓名为空 → 不生成跟进待办（仅清理旧待办，防止空白待办反复生成） */
+  if(!sampleName){
+    if(removed){
+      state.data.todos=cleaned;
+      saveData(KEYS.todos,state.data.todos);
+      if(tableSyncReady('todos')&&state.sbConfig.autoSync){sbMergeTable('todos').catch(function(e){});}
+      if(!silent){renderTable('todos');updateBadges();}
+    }
+    return;
+  }
   // 2) 反馈未反馈 → 跟进反馈待办
   if((ship.feedback_status||'未反馈')!=='已反馈'){
     var fbDue=ship.ship_date||todayStr();
